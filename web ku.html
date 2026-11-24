@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartExam – Online Examination System</title>
+
+  <!-- Google Fonts: Inter, Poppins & Amiri (for crisp Arabic script) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Poppins', 'sans-serif'],
+            arabic: ['Amiri', 'serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            },
+            accent: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Poppins', sans-serif;
+    }
+    .arabic-text {
+      font-family: 'Amiri', serif;
+      direction: rtl;
+      unicode-bidi: isolate;
+      line-height: 2.1;
+    }
+    .fade-in {
+      animation: fadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes pulseWarning {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+      }
+    }
+    .timer-urgent {
+      animation: pulseWarning 1.5s infinite;
+    }
+    /* Custom scrollbar for question grid */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 selection:bg-blue-600 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <!-- Brand Logo -->
+      <button onclick="navigateTo('home')" class="flex items-center gap-3 text-left group focus:outline-none">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-600/20 group-hover:scale-105 transition-transform">
+          <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display font-bold text-lg sm:text-xl tracking-tight text-slate-900">Smart<span class="text-blue-600">Exam</span></span>
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">PRO CBT</span>
+          </div>
+          <p class="text-[11px] text-slate-500 hidden sm:block leading-none mt-0.5">Online Examination System</p>
+        </div>
+      </button>
+
+      <!-- Navigation Links (Hidden during active exam to avoid distraction, or switched via modal) -->
+      <nav id="main-nav" class="flex items-center gap-1.5 sm:gap-2">
+        <button id="nav-home" onclick="navigateTo('home')" class="px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 bg-blue-50 text-blue-700">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Beranda Ujian</span>
+        </button>
+        <button id="nav-history" onclick="navigateTo('history')" class="px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+          <span>Riwayat Nilai</span>
+          <span id="nav-history-badge" class="hidden px-1.5 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 font-bold">0</span>
+        </button>
+      </nav>
+
+      <!-- Active Exam Status Pill (Visible only during active exam) -->
+      <div id="exam-header-controls" class="hidden items-center gap-2 sm:gap-3">
+        <div id="timer-box" class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-mono font-bold text-base sm:text-lg transition-colors">
+          <i data-lucide="clock" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+          <span id="timer-display">45:00</span>
+        </div>
+        <button onclick="openFinishModal()" class="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all flex items-center gap-1.5">
+          <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+          <span>Selesai<span class="hidden sm:inline"> Ujian</span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 5-Minute Warning Banner -->
+    <div id="time-warning-banner" class="hidden bg-amber-500 text-white px-4 py-2 text-xs sm:text-sm font-medium text-center shadow-inner">
+      <div class="max-w-7xl mx-auto flex items-center justify-center gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+        <span>Perhatian! Waktu pengerjaan tersisa kurang dari <strong>5 menit</strong>. Segera periksa kembali jawaban Anda sebelum waktu habis.</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+    <!-- ==================== VIEW 1: BERANDA UJIAN (HOME DASHBOARD) ==================== -->
+    <section id="view-home" class="fade-in space-y-6">
+      <!-- Hero Exam Card -->
+      <div class="relative overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+        <div class="absolute top-0 right-0 -mt-16 -mr-16 w-72 h-72 rounded-full bg-gradient-to-br from-blue-100/70 to-purple-100/70 blur-2xl pointer-events-none"></div>
+        <div class="relative p-6 sm:p-8 lg:p-10">
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              <i data-lucide="book-open-check" class="w-3.5 h-3.5"></i>
+              Asesmen Sumatif Akhir Semester Ganjil
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+              <i data-lucide="school" class="w-3.5 h-3.5"></i>
+              SMA Kemala Bhayangkari 1 Surabaya • TP 2026/2027
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div class="lg:col-span-8 space-y-4">
+              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                Pendidikan Agama Islam dan Budi Pekerti (PAIBP) – Kelas XII
+              </h1>
+              <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+                Paket ujian interaktif berbasis standar evaluasi resmi yang mencakup materi <strong class="text-slate-800">Sabar &amp; Menghadapi Musibah</strong>, <strong class="text-slate-800">Integrasi Iman-Islam-Ihsan</strong>, <strong class="text-slate-800">Menghindari Perilaku Munafik &amp; Keras Hati</strong>, <strong class="text-slate-800">Hukum Waris Islam (Faraid)</strong>, serta <strong class="text-slate-800">Peradaban Islam di Andalusia &amp; Strategi Kemajuan Umat</strong>.
+              </p>
+
+              <!-- Key Metrics Pills -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <div class="flex items-center gap-2 text-blue-600 mb-1">
+                    <i data-lucide="file-question" class="w-4 h-4"></i>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Jumlah Soal</span>
+                  </div>
+                  <p class="text-xl font-bold text-slate-900">30 Soal</p>
+                  <p class="text-[11px] text-slate-500">Pilihan Ganda A–E</p>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <div class="flex items-center gap-2 text-purple-600 mb-1">
+                    <i data-lucide="award" class="w-4 h-4"></i>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Standar KKM</span>
+                  </div>
+                  <p class="text-xl font-bold text-slate-900">75 <span class="text-xs font-normal text-slate-500">/ 100</span></p>
+                  <p class="text-[11px] text-slate-500">Min. 23 Benar</p>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <div class="flex items-center gap-2 text-emerald-600 mb-1">
+                    <i data-lucide="trophy" class="w-4 h-4"></i>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Nilai Terbaik</span>
+                  </div>
+                  <p id="home-best-score" class="text-xl font-bold text-slate-900">-</p>
+                  <p id="home-attempt-count" class="text-[11px] text-slate-500">0 Percobaan</p>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <div class="flex items-center gap-2 text-amber-600 mb-1">
+                    <i data-lucide="trending-up" class="w-4 h-4"></i>
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Rata-Rata</span>
+                  </div>
+                  <p id="home-avg-score" class="text-xl font-bold text-slate-900">-</p>
+                  <p class="text-[11px] text-slate-500">Skala 0–100</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Configuration & Start Box -->
+            <div class="lg:col-span-4">
+              <div class="rounded-2xl bg-gradient-to-b from-blue-50/90 to-purple-50/70 border border-blue-200/80 p-5 sm:p-6 space-y-5 shadow-sm">
+                <div>
+                  <h2 class="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-blue-600"></i>
+                    Pengaturan Ujian
+                  </h2>
+                  <p class="text-xs text-slate-600 mt-1">Sesuaikan durasi dan mode pengacakan sebelum memulai.</p>
+                </div>
+
+                <!-- Duration Selector -->
+                <div class="space-y-2">
+                  <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700">Durasi Ujian (Menit)</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="selectDurationPreset(30)" data-duration="30" class="duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-white border-slate-200 text-slate-700 hover:border-blue-400">
+                      30 Mnt
+                    </button>
+                    <button type="button" onclick="selectDurationPreset(45)" data-duration="45" class="duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-blue-600 border-blue-600 text-white shadow-sm">
+                      45 Mnt
+                    </button>
+                    <button type="button" onclick="selectDurationPreset(60)" data-duration="60" class="duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-white border-slate-200 text-slate-700 hover:border-blue-400">
+                      60 Mnt
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-2 pt-1">
+                    <span class="text-xs text-slate-600 shrink-0">Kustom:</span>
+                    <input id="custom-duration-input" type="number" min="1" max="180" value="45" onchange="handleCustomDuration(this.value)" class="w-full px-3 py-1.5 text-sm rounded-xl bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold text-slate-800" />
+                    <span class="text-xs font-medium text-slate-500">menit</span>
+                  </div>
+                </div>
+
+                <!-- Shuffle Toggles -->
+                <div class="space-y-2.5 pt-1 border-t border-blue-200/60">
+                  <label class="flex items-center justify-between cursor-pointer select-none">
+                    <span class="text-sm font-medium text-slate-700">Acak Urutan Soal</span>
+                    <input id="toggle-shuffle-questions" type="checkbox" checked class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" />
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer select-none">
+                    <span class="text-sm font-medium text-slate-700">Acak Posisi Pilihan A–E</span>
+                    <input id="toggle-shuffle-options" type="checkbox" checked class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300" />
+                  </label>
+                </div>
+
+                <!-- Start Button -->
+                <button onclick="startExam()" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-display font-bold text-base shadow-lg shadow-blue-600/25 hover:shadow-blue-600/35 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2.5">
+                  <i data-lucide="play-circle" class="w-5 h-5"></i>
+                  <span>Mulai Ujian Sekarang</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pre-Exam Instructions & Blueprint Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Petunjuk Ujian -->
+        <div class="lg:col-span-7 rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-7 shadow-sm space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="info" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="font-display font-bold text-lg text-slate-900">Petunjuk Pengerjaan Ujian</h2>
+              <p class="text-xs text-slate-500">Bacalah tata cara penggunaan sistem sebelum memulai ujian</p>
+            </div>
+          </div>
+
+          <ul class="space-y-3 text-sm text-slate-600">
+            <li class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <span>Ujian terdiri atas <strong>30 butir soal</strong> Pilihan Ganda (A, B, C, D, E) yang disusun berdasarkan kisi-kisi Asesmen Sumatif Akhir Semester Ganjil PAIBP Kelas XII.</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <span>Pilih salah satu opsi jawaban yang paling tepat, lalu tekan tombol <strong>"Jawab"</strong> untuk mengunci pilihan serta melihat <strong>status benar/salah</strong> dan <strong>pembahasan lengkap</strong> secara otomatis.</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <span>Anda dapat berpindah antarsoal melalui tombol <strong>Sebelumnya</strong>, <strong>Selanjutnya</strong>, atau panel <strong>Navigasi Nomor Soal</strong> tanpa menghilangkan jawaban maupun mereset waktu ujian.</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">4</span>
+              <span>Sistem akan memberikan peringatan saat waktu tersisa <strong>5 menit</strong>. Apabila waktu habis (00:00), ujian akan <strong>otomatis diselesaikan</strong> dan dikoreksi.</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">5</span>
+              <span>Nilai akhir dihitung menggunakan rumus: <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-xs">(Jumlah Jawaban Benar / 30) × 100</code> dengan batas kelulusan (KKM) <strong>75</strong>.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Kisi-Kisi Materi Card -->
+        <div class="lg:col-span-5 rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-7 shadow-sm space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <i data-lucide="layers" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="font-display font-bold text-lg text-slate-900">Komposisi 30 Soal</h2>
+              <p class="text-xs text-slate-500">Distribusi kompetensi &amp; tipe analisis soal</p>
+            </div>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">No. 1–5 • Pilihan Ganda Dasar</p>
+                <p class="text-xs text-slate-500">Sabar, Hadis Munafik, Iman-Islam-Ihsan, Andalusia</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold">5 Soal</span>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">No. 6–10 • Analisis Kasus Kompleks</p>
+                <p class="text-xs text-slate-500">Sikap Musibah, Pemulihan Amanah, Prinsip Waris</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold">5 Soal</span>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">No. 11–15 • Pemetaan Konsep &amp; Tokoh</p>
+                <p class="text-xs text-slate-500">Muraqabah, Faraid, Ibnu Sina &amp; Al-Khawarizmi</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold">5 Soal</span>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">No. 16–25 • Validasi Dalil &amp; Konsep Kunci</p>
+                <p class="text-xs text-slate-500">QS. Al-Baqarah: 153, Mawani'ul Irts, Rasio 2:1</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold">10 Soal</span>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">No. 26–30 • Studi Kasus Mendalam (HOTS)</p>
+                <p class="text-xs text-slate-500">Hitung Faraid (Istri &amp; 2 Putra), Strategi Peradaban</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold">5 Soal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: SISTEM PENGERJAAN UJIAN (ACTIVE EXAM) ==================== -->
+    <section id="view-exam" class="hidden fade-in">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left / Main Column: Question Area -->
+        <div class="lg:col-span-8 space-y-5">
+          <div class="rounded-3xl bg-white border border-slate-200/90 shadow-sm overflow-hidden">
+            <!-- Question Card Top Bar -->
+            <div class="px-5 sm:px-7 py-4 bg-slate-50/80 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <span id="q-number-badge" class="px-3.5 py-1 rounded-xl bg-blue-600 text-white font-display font-bold text-sm shadow-sm">
+                  Soal 1 dari 30
+                </span>
+                <span id="q-category-badge" class="px-3 py-1 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold">
+                  Pilihan Ganda
+                </span>
+              </div>
+              <div id="q-status-pill" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-200/70 text-slate-600">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span>Belum Dijawab</span>
+              </div>
+            </div>
+
+            <!-- Question Stem & Options -->
+            <div class="p-5 sm:p-7 space-y-6">
+              <!-- Question Text -->
+              <div id="q-stem-container" class="text-slate-800 text-base sm:text-[17px] leading-relaxed font-medium space-y-3">
+                <!-- Injected dynamically -->
+              </div>
+
+              <!-- 5 Options A-E -->
+              <div id="q-options-container" class="space-y-3">
+                <!-- Injected dynamically -->
+              </div>
+
+              <!-- Primary Action Row: "Jawab" Button -->
+              <div id="check-answer-bar" class="pt-2 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-slate-500 flex items-center gap-1.5">
+                  <i data-lucide="mouse-pointer-click" class="w-4 h-4 text-blue-500"></i>
+                  <span>Pilih salah satu jawaban, lalu klik <strong>Jawab</strong> untuk melihat pembahasan.</span>
+                </p>
+                <button id="btn-check-answer" onclick="submitCurrentAnswer()" disabled class="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-display font-bold text-sm shadow-md shadow-blue-600/20 disabled:shadow-none transition-all flex items-center gap-2">
+                  <i data-lucide="check-square" class="w-4 h-4"></i>
+                  <span>Jawab</span>
+                </button>
+              </div>
+
+              <!-- Automatic Explanation Box (Hidden until "Jawab" is clicked) -->
+              <div id="explanation-panel" class="hidden fade-in rounded-2xl border p-5 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div id="explanation-status-badge" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-display font-bold text-sm">
+                    <!-- Status text injected -->
+                  </div>
+                  <div id="explanation-key-badge" class="text-xs sm:text-sm font-semibold px-3 py-1 rounded-lg bg-white/80 border">
+                    <!-- Correct key injected -->
+                  </div>
+                </div>
+                <div class="text-sm text-slate-700 leading-relaxed space-y-1.5">
+                  <p class="font-bold text-slate-900 flex items-center gap-1.5">
+                    <i data-lucide="lightbulb" class="w-4 h-4 text-amber-500"></i>
+                    <span>Pembahasan Lengkap:</span>
+                  </p>
+                  <p id="explanation-text" class="text-slate-700"></p>
+                </div>
+                <div class="pt-2 flex justify-end">
+                  <button id="btn-next-after-check" onclick="handleNextAfterCheck()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center gap-2">
+                    <span id="btn-next-after-check-label">Soal Berikutnya</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Question Navigation Bar -->
+            <div class="px-5 sm:px-7 py-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-3">
+              <button id="btn-prev-question" onclick="prevQuestion()" class="px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-sm transition-all flex items-center gap-2">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                <span>Sebelumnya</span>
+              </button>
+
+              <span id="mobile-progress-text" class="text-xs font-semibold text-slate-500 sm:hidden">
+                1 / 30
+              </span>
+
+              <button id="btn-next-question" onclick="nextQuestion()" class="px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-sm transition-all flex items-center gap-2">
+                <span>Selanjutnya</span>
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Sidebar: Question Number Navigator -->
+        <aside class="lg:col-span-4 space-y-4 lg:sticky lg:top-22">
+          <div class="rounded-3xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-display font-bold text-base text-slate-900">Navigasi Nomor Soal</h3>
+                <p class="text-xs text-slate-500">Klik nomor untuk berpindah soal</p>
+              </div>
+              <span id="sidebar-answered-counter" class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-bold text-xs border border-blue-200">
+                0 / 30 Terjawab
+              </span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div id="sidebar-progress-bar" class="h-full bg-gradient-to-r from-blue-600 to-purple-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- 30 Question Grid -->
+            <div id="question-nav-grid" class="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-5 gap-2">
+              <!-- Buttons 1-30 injected dynamically -->
+            </div>
+
+            <!-- Legend -->
+            <div class="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+              <div class="flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-md bg-emerald-500 inline-block"></span>
+                <span>Dijawab Benar</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-md bg-rose-500 inline-block"></span>
+                <span>Dijawab Salah</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-md bg-blue-600 inline-block"></span>
+                <span>Dipilih (Belum Kunci)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-md bg-slate-100 border border-slate-300 inline-block"></span>
+                <span>Belum Dijawab</span>
+              </div>
+            </div>
+
+            <!-- Finish Button inside Sidebar -->
+            <button onclick="openFinishModal()" class="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-display font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-sm">
+              <i data-lucide="flag" class="w-4 h-4 text-purple-400"></i>
+              <span>Selesaikan &amp; Kumpulkan Ujian</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: HASIL & NILAI UJIAN (RESULTS PAGE) ==================== -->
+    <section id="view-results" class="hidden fade-in space-y-6">
+      <!-- Score Hero Card -->
+      <div class="rounded-3xl bg-white border border-slate-200/90 shadow-sm overflow-hidden">
+        <div id="result-banner-bg" class="p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 text-white">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-2 max-w-2xl">
+              <div class="flex flex-wrap items-center gap-2">
+                <span id="result-status-badge" class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-emerald-400 text-slate-950 shadow-sm">
+                  <i data-lucide="check-circle" class="w-4 h-4"></i>
+                  LULUS KKM (≥ 75)
+                </span>
+                <span id="result-timestamp" class="text-xs text-blue-100 font-medium">
+                  Selesai pada: -
+                </span>
+              </div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Hasil Evaluasi Ujian PAIBP Kelas XII</h1>
+              <p id="result-feedback-message" class="text-blue-100 text-sm sm:text-base">
+                Selamat! Anda telah menyelesaikan ujian dengan hasil yang sangat baik.
+              </p>
+            </div>
+
+            <!-- Big Score Circle -->
+            <div class="flex items-center gap-5 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 shrink-0">
+              <div class="text-center">
+                <p class="text-xs uppercase tracking-wider font-semibold text-blue-100">Nilai Akhir</p>
+                <p id="result-final-score" class="font-display font-extrabold text-5xl sm:text-6xl tracking-tight mt-1">0</p>
+                <p class="text-xs text-blue-200 mt-1">Skala 0 – 100</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Metric Cards -->
+        <div class="p-6 sm:p-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 bg-white">
+          <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+            <div class="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              <span>Jawaban Benar</span>
+            </div>
+            <p id="res-correct-count" class="text-2xl font-extrabold text-emerald-800 mt-1">0</p>
+            <p class="text-xs text-emerald-600">dari 30 soal</p>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-rose-50/70 border border-rose-200/80">
+            <div class="flex items-center gap-2 text-rose-700 text-xs font-bold uppercase">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
+              <span>Jawaban Salah</span>
+            </div>
+            <p id="res-wrong-count" class="text-2xl font-extrabold text-rose-800 mt-1">0</p>
+            <p class="text-xs text-rose-600">butir soal</p>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-100/80 border border-slate-200">
+            <div class="flex items-center gap-2 text-slate-600 text-xs font-bold uppercase">
+              <i data-lucide="minus-circle" class="w-4 h-4"></i>
+              <span>Belum Dijawab</span>
+            </div>
+            <p id="res-unanswered-count" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
+            <p class="text-xs text-slate-500">butir kosong</p>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80">
+            <div class="flex items-center gap-2 text-blue-700 text-xs font-bold uppercase">
+              <i data-lucide="percent" class="w-4 h-4"></i>
+              <span>Keberhasilan</span>
+            </div>
+            <p id="res-percentage" class="text-2xl font-extrabold text-blue-800 mt-1">0%</p>
+            <p class="text-xs text-blue-600">akurasi jawaban</p>
+          </div>
+
+          <div class="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-purple-50/70 border border-purple-200/80">
+            <div class="flex items-center gap-2 text-purple-700 text-xs font-bold uppercase">
+              <i data-lucide="timer" class="w-4 h-4"></i>
+              <span>Waktu Digunakan</span>
+            </div>
+            <p id="res-time-used" class="text-xl sm:text-2xl font-extrabold text-purple-800 mt-1">00:00</p>
+            <p class="text-xs text-purple-600">durasi pengerjaan</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visualization + Action Panel -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Chart Card -->
+        <div class="lg:col-span-5 rounded-3xl bg-white border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 class="font-display font-bold text-lg text-slate-900">Visualisasi Hasil Ujian</h2>
+            <p class="text-xs text-slate-500">Proporsi jawaban benar, salah, dan tidak dijawab</p>
+          </div>
+          <div class="relative h-60 my-4 flex items-center justify-center">
+            <canvas id="resultChart"></canvas>
+          </div>
+          <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 text-center">
+            Rumus Penilaian: <strong class="text-slate-800">Nilai = (Jumlah Benar ÷ 30) × 100</strong>
+          </div>
+        </div>
+
+        <!-- Action & Personal Record Card -->
+        <div class="lg:col-span-7 rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-7 shadow-sm flex flex-col justify-between space-y-6">
+          <div class="space-y-4">
+            <h2 class="font-display font-bold text-lg text-slate-900">Ringkasan Performa &amp; Langkah Berikutnya</h2>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              Setiap percobaan ujian otomatis tersimpan ke dalam riwayat belajar Anda. Anda dapat mengulang ujian kembali dengan urutan soal dan posisi pilihan jawaban yang diacak ulang untuk menguji pemahaman secara menyeluruh.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p class="text-xs text-slate-500 font-medium">Total Percobaan</p>
+                <p id="res-total-attempts" class="text-xl font-bold text-slate-900 mt-0.5">1 Kali</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p class="text-xs text-slate-500 font-medium">Nilai Tertinggi</p>
+                <p id="res-best-score" class="text-xl font-bold text-blue-600 mt-0.5">0</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p class="text-xs text-slate-500 font-medium">Rata-Rata Nilai</p>
+                <p id="res-avg-score" class="text-xl font-bold text-purple-600 mt-0.5">0</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <button onclick="retryExam()" class="flex-1 sm:flex-none px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-display font-bold text-sm shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              <span>Coba Lagi (Acak Ulang)</span>
+            </button>
+            <button onclick="navigateTo('history')" class="flex-1 sm:flex-none px-5 py-3.5 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-sm transition-all flex items-center justify-center gap-2">
+              <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+              <span>Lihat Riwayat Nilai</span>
+            </button>
+            <button onclick="navigateTo('home')" class="flex-1 sm:flex-none px-5 py-3.5 rounded-2xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all flex items-center justify-center gap-2">
+              <i data-lucide="home" class="w-4 h-4"></i>
+              <span>Beranda</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Complete Review of All 30 Questions -->
+      <div class="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="font-display font-bold text-lg sm:text-xl text-slate-900">Tinjauan Kunci Jawaban &amp; Pembahasan (30 Soal)</h2>
+            <p class="text-xs text-slate-500">Evaluasi jawaban Anda dibandingkan dengan kunci jawaban resmi</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="filterReview('all')" data-filter="all" class="review-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white">Semua (30)</button>
+            <button onclick="filterReview('correct')" data-filter="correct" class="review-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">Benar</button>
+            <button onclick="filterReview('wrong')" data-filter="wrong" class="review-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">Salah / Kosong</button>
+          </div>
+        </div>
+
+        <div id="results-review-list" class="space-y-4">
+          <!-- Review items injected dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: DASHBOARD RIWAYAT UJIAN (HISTORY) ==================== -->
+    <section id="view-history" class="hidden fade-in space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900">Dashboard Riwayat &amp; Statistik Ujian</h1>
+          <p class="text-sm text-slate-600 mt-1">Pantau perkembangan nilai dan konsistensi hasil ujian Anda dari waktu ke waktu.</p>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <button onclick="navigateTo('home')" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center gap-2">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            <span>Mulai Ujian Baru</span>
+          </button>
+          <button id="btn-clear-history" onclick="openClearHistoryModal()" class="px-4 py-2.5 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 font-semibold text-sm transition-all flex items-center gap-2">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span>Hapus Riwayat</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Percobaan</span>
+            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="repeat" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <p id="hist-total-attempts" class="text-3xl font-extrabold text-slate-900 mt-2">0</p>
+          <p class="text-xs text-slate-500 mt-1">Sesi ujian tersimpan</p>
+        </div>
+
+        <div class="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Nilai Tertinggi</span>
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <i data-lucide="trophy" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <p id="hist-best-score" class="text-3xl font-extrabold text-emerald-600 mt-2">-</p>
+          <p class="text-xs text-slate-500 mt-1">Rekor pribadi terbaik</p>
+        </div>
+
+        <div class="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Rata-Rata Nilai</span>
+            <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <p id="hist-avg-score" class="text-3xl font-extrabold text-purple-600 mt-2">-</p>
+          <p class="text-xs text-slate-500 mt-1">Dari seluruh percobaan</p>
+        </div>
+
+        <div class="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Tingkat Kelulusan</span>
+            <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <i data-lucide="award" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <p id="hist-pass-rate" class="text-3xl font-extrabold text-slate-900 mt-2">0%</p>
+          <p class="text-xs text-slate-500 mt-1">Target KKM ≥ 75</p>
+        </div>
+      </div>
+
+      <!-- Score Progression Line Chart -->
+      <div class="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-7 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="font-display font-bold text-lg text-slate-900">Grafik Perkembangan Nilai</h2>
+            <p class="text-xs text-slate-500">Tren skor per percobaan dibandingkan garis standar kelulusan (KKM 75)</p>
+          </div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+            Skor Percobaan
+          </span>
+        </div>
+        <div class="relative h-64 sm:h-72 w-full">
+          <canvas id="historyChart"></canvas>
+          <div id="history-chart-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-slate-50/70 rounded-2xl">
+            <i data-lucide="line-chart" class="w-10 h-10 text-slate-300 mb-2"></i>
+            <p class="text-sm font-semibold text-slate-600">Belum ada data grafik</p>
+            <p class="text-xs text-slate-500">Selesaikan minimal 1 percobaan ujian untuk melihat grafik perkembangan nilai.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attempt History Table -->
+      <div class="rounded-3xl bg-white border border-slate-200/90 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-200">
+          <h2 class="font-display font-bold text-lg text-slate-900">Log Riwayat Percobaan Ujian</h2>
+          <p class="text-xs text-slate-500">Detail lengkap setiap sesi ujian yang pernah dikerjakan</p>
+        </div>
+
+        <div id="history-empty-state" class="p-10 text-center space-y-3">
+          <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+          </div>
+          <h3 class="font-display font-bold text-base text-slate-800">Belum Ada Riwayat Ujian</h3>
+          <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+            Anda belum memiliki catatan pengerjaan ujian. Silakan mulai ujian pertama Anda untuk melihat statistik dan nilai di sini.
+          </p>
+          <button onclick="navigateTo('home')" class="mt-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all">
+            Mulai Ujian Pertama
+          </button>
+        </div>
+
+        <div id="history-table-wrapper" class="hidden overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th class="py-3.5 px-5">Percobaan</th>
+                <th class="py-3.5 px-5">Tanggal &amp; Waktu</th>
+                <th class="py-3.5 px-5">Benar / Salah / Kosong</th>
+                <th class="py-3.5 px-5">Durasi</th>
+                <th class="py-3.5 px-5">Nilai Akhir</th>
+                <th class="py-3.5 px-5">Status</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body" class="divide-y divide-slate-100 text-sm">
+              <!-- Rows injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200/80 py-5 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <p><strong class="text-slate-700">SmartExam</strong> – Online Examination System • PAIBP Kelas XII (SMA Kemala Bhayangkari 1 Surabaya)</p>
+      <p>Sistem Evaluasi Otomatis &amp; Analitik Hasil Belajar</p>
+    </div>
+  </footer>
+
+  <!-- ==================== MODAL: KONFIRMASI SELESAI UJIAN ==================== -->
+  <div id="modal-finish" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <i data-lucide="help-circle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-lg text-slate-900">Selesaikan Ujian Sekarang?</h3>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">
+            Pastikan Anda telah memeriksa seluruh jawaban. Setelah dikumpulkan, sesi ujian akan berakhir dan nilai langsung dihitung.
+          </p>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p class="text-[11px] font-semibold text-slate-500 uppercase">Total Soal</p>
+          <p class="text-lg font-extrabold text-slate-800">30</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-semibold text-emerald-600 uppercase">Terjawab</p>
+          <p id="modal-answered-count" class="text-lg font-extrabold text-emerald-600">0</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-semibold text-amber-600 uppercase">Belum Dijawab</p>
+          <p id="modal-unanswered-count" class="text-lg font-extrabold text-amber-600">30</p>
+        </div>
+      </div>
+
+      <div id="modal-unanswered-warning" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0"></i>
+        <span>Masih ada soal yang belum dijawab. Soal kosong akan dihitung bernilai 0.</span>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-1">
+        <button onclick="closeFinishModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all">
+          Kembali Mengerjakan
+        </button>
+        <button onclick="finishExam(false)" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-sm shadow-md transition-all">
+          Ya, Kumpulkan Jawaban
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: KONFIRMASI HAPUS RIWAYAT ==================== -->
+  <div id="modal-clear-history" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+          <i data-lucide="trash-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-lg text-slate-900">Hapus Seluruh Riwayat Nilai?</h3>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">
+            Tindakan ini akan menghapus semua catatan percobaan ujian, nilai tertinggi, dan grafik statistik secara permanen.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-1">
+        <button onclick="closeClearHistoryModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all">
+          Batal
+        </button>
+        <button onclick="confirmClearHistory()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm shadow-sm transition-all">
+          Hapus Permanen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div id="toast-notification" class="hidden fixed bottom-5 right-5 z-50 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 fade-in">
+    <i id="toast-icon" data-lucide="bell" class="w-5 h-5 text-amber-400 shrink-0"></i>
+    <p id="toast-message" class="text-xs sm:text-sm font-medium"></p>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. COMPLETE QUESTION BANK (ALL 30 QUESTIONS FROM PAIBP KELAS XII DOCUMENT)
+    // =========================================================================
+    const QUESTION_BANK = [
+      // --- BAGIAN A: PILIHAN GANDA (NOMOR 1-5) ---
+      {
+        id: 1,
+        category: "Pilihan Ganda",
+        stem: "Dika telah mempersiapkan diri selama enam bulan untuk mengikuti kompetisi sains tingkat nasional, namun hasilnya belum memenuhi target yang diharapkan. Ia sempat merasa kecewa, lalu menenangkan diri, mengevaluasi kekurangannya, dan tetap berprasangka baik kepada Allah Swt. bahwa ada hikmah di balik hasil tersebut. Sikap Dika mencerminkan penerapan sabar yang paling tepat karena...",
+        options: [
+          "Menunda seluruh aktivitas belajar agar tidak mengalami tekanan mental kembali",
+          "Menerima hasil dengan pasrah tanpa melakukan evaluasi atas proses yang telah dilalui",
+          "Mengendalikan emosi, melakukan muhasabah, dan tetap berikhtiar secara konstruktif",
+          "Menyalahkan sistem penilaian kompetisi sebagai penyebab utama kegagalannya",
+          "Mengalihkan kekecewaan kepada orang lain agar beban pikiran terasa lebih ringan"
+        ],
+        correctIndex: 2,
+        explanation: "Sabar dalam Islam bukan berarti menyerah pasif tanpa usaha, melainkan kemampuan menahan diri dari keluh kesah berlebihan, mengendalikan emosi, melakukan introspeksi (muhasabah) atas kekurangan, berhusnuzan kepada takdir Allah Swt., serta bangkit kembali dengan ikhtiar yang lebih terarah."
+      },
+      {
+        id: 2,
+        category: "Pilihan Ganda",
+        stem: "Sebuah keluarga di kawasan rawan genangan kehilangan sebagian perabotan rumah akibat banjir kiriman. Sang ayah segera mengajak anggota keluarga mengamankan dokumen penting, membersihkan lumpur bersama-sama, dan saling menguatkan sambil berdoa. Perilaku keluarga tersebut menunjukkan penerapan sabar dalam menghadapi musibah melalui...",
+        options: [
+          "Menghindari gotong royong karena fokus pada kerugian materi",
+          "Menunjukkan ketabahan, kerja sama, dan ketenangan batin saat musibah terjadi",
+          "Mengabaikan upaya pencegahan banjir di masa mendatang karena sudah takdir",
+          "Mengeluhkan kondisi lingkungan secara terbuka di media sosial",
+          "Menyerahkan seluruh urusan pembersihan kepada pihak luar tanpa keterlibatan keluarga"
+        ],
+        correctIndex: 1,
+        explanation: "Menghadapi musibah dengan sabar diwujudkan melalui ketabahan hati, ketenangan dalam bertindak menyelamatkan hal-hal krusial, kebersamaan (gotong royong) antaranggota keluarga, serta memanjatkan doa memohon pertolongan Allah Swt."
+      },
+      {
+        id: 3,
+        category: "Pilihan Ganda",
+        stem: "Dalam sebuah kerja kelompok, Raka berjanji di depan teman-temannya bahwa ia siap menyelesaikan bagian analisis data tepat waktu. Namun, menjelang tenggat pengumpulan, ia beralasan sibuk dan belum menyentuh tugasnya sama sekali. Dalam hadis Rasulullah saw., tanda orang munafik disebutkan:",
+        arabic: "آيَةُ الْمُنَافِقِ ثَلَاثٌ: إِذَا حَدَّثَ كَذَبَ، وَإِذَا وَعَدَ أَخْلَفَ، وَإِذَا اؤْتُمِنَ خَانَ",
+        stemAfter: "Berdasarkan narasi dan potongan hadis di atas, perilaku Raka menunjukkan ciri kemunafikan berupa...",
+        options: [
+          "Mengkhianati amanah yang diberikan kelompok",
+          "Mengingkari janji yang telah diucapkan",
+          "Berdusta mengenai kondisi kesehatannya",
+          "Bersikap keras kepala saat menerima masukan",
+          "Menutup diri dari diskusi bersama anggota lain"
+        ],
+        correctIndex: 1,
+        explanation: "Potongan hadis 'wa idza wa'ada akhlafa' (وَإِذَا وَعَدَ أَخْلَفَ) berarti 'apabila berjanji ia mengingkari'. Raka secara terang-terangan menyatakan kesanggupan dan berjanji menyelesaikan analisis data tepat waktu, namun melalaikannya menjelang tenggat."
+      },
+      {
+        id: 4,
+        category: "Pilihan Ganda",
+        stem: "Seorang siswa meyakini bahwa Allah Swt. Maha Mengawasi (Iman), rutin menunaikan salat lima waktu dan zakat/infak sesuai tuntunan syariat (Islam), serta berupaya menjaga kualitas ibadah dan akhlak mulia seolah-olah melihat Allah atau merasa dilihat oleh-Nya (Ihsan). Keterkaitan ketiganya dalam kehidupan sehari-hari membentuk pribadi yang...",
+        options: [
+          "Memisahkan keyakinan batin dengan aktivitas sosial kemasyarakatan",
+          "Menjadikan ritual ibadah sekadar rutinitas tanpa dampak pada perilaku",
+          "Mengintegrasikan keyakinan, ketaatan syariat, dan kualitas moral secara utuh",
+          "Mengutamakan aspek lahiriah saja agar mendapat pujian dari lingkungan",
+          "Menempatkan ihsan sebagai pengganti kewajiban dasar dalam Islam"
+        ],
+        correctIndex: 2,
+        explanation: "Iman (pondasi akidah/keyakinan), Islam (kepatuhan terhadap rukun dan syariat lahiriah), dan Ihsan (kesadaran muraqabah dan kesempurnaan akhlak) merupakan satu kesatuan utuh yang membentuk muslim kaffah dengan integritas moral tinggi."
+      },
+      {
+        id: 5,
+        category: "Pilihan Ganda",
+        stem: "Pada masa kejayaan Islam di Andalusia (Spanyol), kota-kota seperti Kordoba dan Granada tumbuh menjadi pusat ilmu pengetahuan, sastra, dan arsitektur. Faktor penting yang mendorong kemajuan peradaban Islam di wilayah tersebut antara lain...",
+        options: [
+          "Penutupan akses penerjemahan karya klasik Yunani dan Romawi",
+          "Kebijakan isolasi budaya antara masyarakat Muslim dan non-Muslim",
+          "Dukungan terhadap pengembangan ilmu pengetahuan, literasi, serta toleransi intelektual",
+          "Penghapusan lembaga pendidikan dan perpustakaan umum di wilayah perkotaan",
+          "Ketergantungan penuh pada tradisi lisan tanpa pengembangan riset ilmiah"
+        ],
+        correctIndex: 2,
+        explanation: "Kemajuan peradaban Islam di Andalusia didorong oleh perhatian besar para khalifah terhadap pendidikan, pembangunan perpustakaan dan universitas, gerakan penerjemahan serta riset ilmiah, dan iklim toleransi intelektual lintas latar belakang."
+      },
+
+      // --- BAGIAN B: ANALISIS KASUS / PILIHAN GANDA KOMPLEKS (NOMOR 6-10) ---
+      {
+        id: 6,
+        category: "Analisis Kasus (PGK)",
+        stem: "Fajar tidak lulus jalur seleksi masuk perguruan tinggi negeri impiannya setelah belajar intensif selama berbulan-bulan. Kombinasi dua sikap yang paling tepat mencerminkan penerapan sabar dalam menghadapi kegagalan tersebut adalah...",
+        options: [
+          "Menangis berlebihan sambil menyalahkan guru serta menghentikan seluruh rencana pendidikan",
+          "Melakukan evaluasi strategi belajar untuk kesempatan berikutnya dan menjaga keikhlasan bahwa rencana Allah Swt. adalah yang terbaik",
+          "Menyalahkan panitia seleksi secara terbuka dan menolak mengikuti ujian jalur mandiri",
+          "Menghentikan seluruh aktivitas belajar secara permanen sambil menunggu keajaiban tanpa ikhtiar",
+          "Pasrah tanpa melakukan evaluasi cara belajar serta menyalahkan lingkungan sekitar"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban PGK nomor 6 (Kotak 2 & 3), sikap sabar menghadapi kegagalan seleksi ditunjukkan dengan: (1) melakukan evaluasi strategi belajar untuk persiapan jalur/kesempatan berikutnya, dan (2) menjaga keikhlasan serta keyakinan bahwa rencana Allah Swt. adalah yang terbaik."
+      },
+      {
+        id: 7,
+        category: "Analisis Kasus (PGK)",
+        stem: "Ketika rumah seorang siswa terdampak banjir bandang, dua sikap utama yang paling tepat dimiliki dan diterapkan saat tertimpa musibah tersebut meliputi...",
+        options: [
+          "Panik berlebihan saat evakuasi dan menolak bantuan dari tetangga maupun relawan",
+          "Tetap tenang mengutamakan keselamatan jiwa keluarga serta memohon pertolongan kepada Allah Swt. dengan penuh harap dan tawakal",
+          "Mengutamakan penyelamatan barang mewah terlebih dahulu dan menyalahkan takdir secara emosional",
+          "Menolak arahan petugas evakuasi dan menyebarkan kepanikan di lingkungan sekitar",
+          "Berputus asa dari rahmat Allah Swt. dan enggan bekerja sama membersihkan rumah setelah banjir surut"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban PGK nomor 7 (Kotak 1 & 3), sikap yang tepat saat tertimpa musibah banjir meliputi tetap tenang mengutamakan keselamatan jiwa keluarga dan memohon pertolongan kepada Allah Swt. dengan penuh harap dan tawakal."
+      },
+      {
+        id: 8,
+        category: "Analisis Kasus (PGK)",
+        stem: "Untuk mengatasi krisis kepercayaan akibat kelalaian dalam tugas kelompok, dua strategi perbaikan yang berlandaskan nilai kejujuran, amanah, keterbukaan, dan tanggung jawab adalah...",
+        options: [
+          "Menutupi kekeliruan agar reputasi pribadi tetap terlihat sempurna dan menyalahkan rekan tim lain",
+          "Mengakui kesalahan secara terbuka tanpa mencari kambing hitam serta menyusun rencana penyelesaian baru yang realistis dan menepatinya",
+          "Menghindari pertemuan kelompok sementara waktu dan membuat alasan sakit agar tidak dimintai pertanggungjawaban",
+          "Melemparkan tanggung jawab kepada ketua kelompok dan menuntut pembagian nilai yang sama",
+          "Menghapus riwayat pekerjaan sebelumnya dan berjanji tanpa langkah kerja yang terukur"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban PGK nomor 8 (Kotak 1 & 2), strategi perbaikan kepercayaan yang amanah dan bertanggung jawab adalah mengakui kesalahan secara terbuka tanpa mencari kambing hitam, lalu menyusun rencana penyelesaian baru yang realistis dan menepatinya."
+      },
+      {
+        id: 9,
+        category: "Analisis Kasus (PGK)",
+        stem: "Dalam syariat Islam, pembagian harta warisan (al-mirats) memiliki dasar hukum dan prinsip utama yang wajib dipatuhi umat Islam, di antaranya...",
+        options: [
+          "Membagi rata seluruh harta secara mutlak tanpa memandang hubungan kekerabatan atau bagian syariat",
+          "Bersumber dari Al-Qur'an (QS. An-Nisa ayat 11, 12, dan 176), Sunnah, dan ijmak ulama serta memperhatikan prinsip keadilan proporsional sesuai hak dan kewajiban ahli waris",
+          "Membagikan seluruh harta warisan sebelum pewaris wafat tanpa ketentuan yang jelas",
+          "Mengutamakan ahli waris laki-laki saja dan menggugurkan seluruh hak ahli waris perempuan",
+          "Menetapkan pembagian waris sepenuhnya berdasarkan kesepakatan adat yang bertentangan dengan nash Al-Qur'an"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban PGK nomor 9 (Kotak 1 & 2), hukum waris Islam bersumber dari Al-Qur'an (QS. An-Nisa: 11, 12, 176), Sunnah, dan ijmak ulama, serta menegakkan prinsip keadilan proporsional berdasarkan hak dan beban tanggung jawab masing-masing ahli waris."
+      },
+      {
+        id: 10,
+        category: "Analisis Kasus (PGK)",
+        stem: "Peradaban Islam di Eropa memberikan kontribusi besar terhadap kebangkitan dan kemajuan Eropa pada masa berikutnya melalui dua peran strategis berikut, yaitu...",
+        options: [
+          "Penghambatan perkembangan metode observasi ilmiah dan pembatasan pertukaran naskah",
+          "Penerjemahan dan pengembangan karya ilmiah di bidang kedokteran, matematika, astronomi, dan filsafat serta berdirinya pusat keilmuan dan perpustakaan rujukan lintas bangsa",
+          "Penghapusan karya-karya filosofis Yunani kuno dan penutupan akses belajar bagi pelajar non-Muslim",
+          "Monopoli ilmu pengetahuan hanya untuk kalangan istana tanpa publikasi manuskrip",
+          "Penggantian metode eksperimen empiris dengan tradisi mitologi lokal Eropa"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban PGK nomor 10 (Kotak 1 & 2), peradaban Islam di Eropa berkontribusi besar melalui penerjemahan serta pengembangan ilmu kedokteran, matematika, astronomi, dan filsafat, serta pendirian pusat keilmuan dan perpustakaan yang menjadi rujukan cendekiawan lintas bangsa."
+      },
+
+      // --- BAGIAN C: MENJODOHKAN KONSEP & TOKOH (NOMOR 11-15) ---
+      {
+        id: 11,
+        category: "Pemetaan Konsep",
+        stem: "Perhatikan pernyataan kasus berikut: \"Tetap tabah dan tidak berputus asa ketika menghadapi musibah sakit atau kehilangan harta.\" Konsep ajaran Islam yang paling tepat berpasangan dengan pernyataan tersebut adalah...",
+        options: [
+          "Iman (keyakinan), Islam (amalan lahiriah), dan Ihsan (kesadaran muraqabah)",
+          "Ibnu Sina (bidang kedokteran) dan Al-Khawarizmi (bidang matematika/aljabar)",
+          "Sabar menghadapi ujian dan musibah dengan ridha, ikhtiar, dan doa",
+          "Sikap keras kepala yang menghambat musyawarah dan solusi bersama",
+          "Prinsip keadilan dan tanggung jawab sesuai ketentuan syariat Islam"
+        ],
+        correctIndex: 2,
+        explanation: "Sesuai kunci menjodohkan nomor 11 (Pasangan C), sikap tetap tabah dan tidak berputus asa saat sakit atau kehilangan harta adalah wujud dari sabar menghadapi ujian dan musibah dengan ridha, ikhtiar, dan doa."
+      },
+      {
+        id: 12,
+        category: "Pemetaan Konsep",
+        stem: "Perhatikan pernyataan kasus berikut: \"Yakin kepada takdir Allah, rajin beribadah tepat waktu, dan bersedekah dengan tulus karena merasa diawasi Allah.\" Konsep ajaran Islam yang paling tepat berpasangan dengan perilaku tersebut adalah...",
+        options: [
+          "Iman (keyakinan), Islam (amalan lahiriah), dan Ihsan (kesadaran muraqabah)",
+          "Ibnu Sina (bidang kedokteran) dan Al-Khawarizmi (bidang matematika/aljabar)",
+          "Sabar menghadapi ujian dan musibah dengan ridha, ikhtiar, dan doa",
+          "Sikap keras kepala yang menghambat musyawarah dan solusi bersama",
+          "Prinsip keadilan dan tanggung jawab sesuai ketentuan syariat Islam"
+        ],
+        correctIndex: 0,
+        explanation: "Sesuai kunci menjodohkan nomor 12 (Pasangan A), yakin pada takdir mencerminkan Iman, ibadah tepat waktu mencerminkan Islam, dan bersedekah tulus karena merasa diawasi Allah mencerminkan Ihsan (muraqabah)."
+      },
+      {
+        id: 13,
+        category: "Pemetaan Konsep",
+        stem: "Perhatikan pernyataan kasus berikut: \"Bersikukuh mempertahankan pendapat sendiri meski bukti dan masukan kelompok menunjukkan kekeliruan.\" Konsep karakter yang paling sesuai dengan kasus tersebut adalah...",
+        options: [
+          "Iman (keyakinan), Islam (amalan lahiriah), dan Ihsan (kesadaran muraqabah)",
+          "Ibnu Sina (bidang kedokteran) dan Al-Khawarizmi (bidang matematika/aljabar)",
+          "Sabar menghadapi ujian dan musibah dengan ridha, ikhtiar, dan doa",
+          "Sikap keras kepala yang menghambat musyawarah dan solusi bersama",
+          "Prinsip keadilan dan tanggung jawab sesuai ketentuan syariat Islam"
+        ],
+        correctIndex: 3,
+        explanation: "Sesuai kunci menjodohkan nomor 13 (Pasangan D), menolak kebenaran berbasis bukti dan memaksakan ego pribadi dalam forum diskusi merupakan ciri sikap keras kepala yang merusak musyawarah."
+      },
+      {
+        id: 14,
+        category: "Pemetaan Konsep",
+        stem: "Perhatikan pernyataan kasus berikut: \"Membagi harta peninggalan sesuai porsi syariat (faraid) setelah memenuhi hak terkait jenazah, utang, dan wasiat.\" Prinsip yang paling tepat menggambarkan ketentuan tersebut adalah...",
+        options: [
+          "Iman (keyakinan), Islam (amalan lahiriah), dan Ihsan (kesadaran muraqabah)",
+          "Ibnu Sina (bidang kedokteran) dan Al-Khawarizmi (bidang matematika/aljabar)",
+          "Sabar menghadapi ujian dan musibah dengan ridha, ikhtiar, dan doa",
+          "Sikap keras kepala yang menghambat musyawarah dan solusi bersama",
+          "Prinsip keadilan dan tanggung jawab sesuai ketentuan syariat Islam"
+        ],
+        correctIndex: 4,
+        explanation: "Sesuai kunci menjodohkan nomor 14 (Pasangan E), menunaikan hak jenazah, melunasi utang, menunaikan wasiat, lalu membagi sisa harta sesuai ilmu faraid merupakan wujud prinsip keadilan dan tanggung jawab sesuai ketentuan syariat Islam."
+      },
+      {
+        id: 15,
+        category: "Pemetaan Tokoh",
+        stem: "Perhatikan pernyataan berikut: \"Ilmuwan Muslim yang karyanya berpengaruh besar pada perkembangan ilmu pengetahuan dunia.\" Pasangan tokoh dan bidang keilmuan yang paling tepat adalah...",
+        options: [
+          "Iman (keyakinan), Islam (amalan lahiriah), dan Ihsan (kesadaran muraqabah)",
+          "Ibnu Sina (bidang kedokteran) dan Al-Khawarizmi (bidang matematika/aljabar)",
+          "Sabar menghadapi ujian dan musibah dengan ridha, ikhtiar, dan doa",
+          "Sikap keras kepala yang menghambat musyawarah dan solusi bersama",
+          "Prinsip keadilan dan tanggung jawab sesuai ketentuan syariat Islam"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci menjodohkan nomor 15 (Pasangan B), Ibnu Sina (Avicenna) dengan karya monumentalnya 'Al-Qanun fi at-Tibb' di bidang kedokteran dan Al-Khawarizmi di bidang matematika/aljabar merupakan ilmuwan Muslim yang sangat berpengaruh bagi peradaban dunia."
+      },
+
+      // --- BAGIAN D: EVALUASI PERNYATAAN BENAR-SALAH (NOMOR 16-20) ---
+      {
+        id: 16,
+        category: "Evaluasi Dalil (B-S)",
+        stem: "Perhatikan firman Allah Swt. dalam QS. Al-Baqarah ayat 153 berikut:",
+        arabic: "يَا أَيُّهَا الَّذِينَ آمَنُوا اسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ ۚ إِنَّ اللَّهَ مَعَ الصَّابِرِينَ",
+        stemAfter: "Pernyataan: \"Kandungan ayat tersebut mendorong seorang mukmin untuk menjadikan sabar dan salat sebagai penolong utama dalam menghadapi berbagai persoalan hidup sehari-hari.\" Evaluasi yang paling tepat terhadap pernyataan tersebut adalah...",
+        options: [
+          "BENAR, karena ayat tersebut secara tegas memerintahkan orang beriman memohon pertolongan Allah melalui kesabaran dan salat",
+          "SALAH, karena ayat tersebut hanya berlaku bagi para nabi saat menghadapi peperangan saja",
+          "SALAH, karena pertolongan hidup dalam ayat tersebut hanya dikaitkan dengan sedekah harta tanpa salat",
+          "BENAR, namun sabar yang dimaksud berarti pasrah total tanpa melakukan ikhtiar apa pun",
+          "SALAH, karena ayat tersebut melarang seorang mukmin mengadukan kesulitannya dalam salat"
+        ],
+        correctIndex: 0,
+        explanation: "Pernyataan tersebut bernilai BENAR. QS. Al-Baqarah ayat 153 memerintahkan orang-orang beriman untuk menjadikan sabar dan salat sebagai wasilah penolong utama dalam menghadapi setiap ujian kehidupan, disertai jaminan kebersamaan (ma'iyyah) Allah bersama orang-orang yang sabar."
+      },
+      {
+        id: 17,
+        category: "Evaluasi Konsep (B-S)",
+        stem: "Cermati pernyataan berikut: \"Hidup bermakna hanya dapat dicapai apabila seseorang mengejar pencapaian materi sebanyak-banyaknya tanpa mengaitkannya dengan nilai ibadah dan kemanfaatan bagi sesama.\" Evaluasi yang paling tepat terhadap pernyataan tersebut adalah...",
+        options: [
+          "BENAR, karena kekayaan materi adalah satu-satunya tolok ukur kemuliaan manusia di sisi Allah",
+          "SALAH, karena kebermaknaan hidup dalam Islam diukur dari ketakwaan, nilai ibadah, dan kemanfaatan bagi sesama",
+          "BENAR, karena aktivitas duniawi tidak memiliki hubungan sama sekali dengan kehidupan akhirat",
+          "SALAH, karena umat Islam dilarang bekerja mencari rezeki yang halal di dunia",
+          "BENAR, selama pencapaian materi tersebut dipamerkan kepada masyarakat luas"
+        ],
+        correctIndex: 1,
+        explanation: "Pernyataan tersebut bernilai SALAH. Dalam pandangan Islam, materi hanyalah sarana (wasilah), bukan tujuan akhir. Hidup bermakna tercapai apabila pencapaian duniawi diiringi niat ibadah, ketakwaan, dan kebermanfaatan bagi sesama (khairunnas anfa'uhum linnas)."
+      },
+      {
+        id: 18,
+        category: "Evaluasi Akhlak (B-S)",
+        stem: "Cermati pernyataan berikut: \"Sikap keras hati (qaswatul qalb) cenderung membuat seseorang sulit menerima nasihat, kurang berempati terhadap penderitaan orang lain, dan merenggangkan hubungan sosial.\" Evaluasi yang tepat terhadap pernyataan tersebut adalah...",
+        options: [
+          "SALAH, karena sikap keras hati justru memperkuat ketegasan dan empati dalam pergaulan sosial",
+          "BENAR, karena hati yang keras menutup pintu hikmah, mematikan empati, dan memicu keretakan ukhuwah",
+          "SALAH, karena sikap keras hati tidak berpengaruh terhadap penerimaan nasihat kebenaran",
+          "BENAR, namun sikap keras hati dianjurkan dalam musyawarah agar pendapat pribadi selalu menang",
+          "SALAH, karena empati sosial hanya dipengaruhi oleh status ekonomi seseorang"
+        ],
+        correctIndex: 1,
+        explanation: "Pernyataan tersebut bernilai BENAR. Sikap keras hati membuat jiwa tidak tersentuh oleh nasihat kebenaran, menumpulkan kepekaan empati terhadap sesama, serta merusak keharmonisan hubungan sosial."
+      },
+      {
+        id: 19,
+        category: "Evaluasi Faraid (B-S)",
+        stem: "Cermati pernyataan berikut: \"Dalam hukum waris Islam, suami dan anak kandung merupakan golongan ahli waris yang berhak memperoleh bagian tertentu sesuai ketentuan syariat selama tidak terdapat penghalang waris (mawani'ul irts).\" Evaluasi yang tepat adalah...",
+        options: [
+          "SALAH, karena suami tidak termasuk ahli waris yang memiliki bagian pasti dalam Al-Qur'an",
+          "BENAR, karena suami dan anak kandung merupakan ahli waris utama (dzawil furudh/ashabah) yang sah selama tidak terhalang mawani'ul irts",
+          "SALAH, karena hak waris anak kandung otomatis gugur apabila masih ada saudara pewaris",
+          "BENAR, meskipun ahli waris tersebut berbeda agama atau membunuh pewaris secara sengaja",
+          "SALAH, karena pembagian untuk suami dan anak kandung sepenuhnya diserahkan tanpa aturan syariat"
+        ],
+        correctIndex: 1,
+        explanation: "Pernyataan tersebut bernilai BENAR. Suami (mendapat 1/2 jika tidak ada anak, atau 1/4 jika ada anak) dan anak kandung adalah ahli waris utama dalam Islam yang berhak menerima warisan selama tidak terdapat penghalang waris (mawani'ul irts) seperti pembunuhan, perbedaan agama, atau perbudakan."
+      },
+      {
+        id: 20,
+        category: "Evaluasi Peradaban (B-S)",
+        stem: "Cermati pernyataan berikut: \"Masyarakat Muslim global yang menjunjung tinggi toleransi, saling menghormati perbedaan budaya, dan menjaga persatuan akan lebih mudah membangun keharmonisan sosial di tengah keberagaman dunia.\" Evaluasi yang tepat adalah...",
+        options: [
+          "SALAH, karena keberagaman budaya justru harus diseragamkan secara paksa agar tercipta ketertiban",
+          "BENAR, karena Islam mengajarkan prinsip tasamuh (toleransi) dan ukhuwah yang menjaga harmoni dalam kemajemukan",
+          "SALAH, karena persatuan umat hanya dapat terwujud jika menutup diri dari interaksi global",
+          "BENAR, dengan syarat meninggalkan prinsip-prinsip akidah demi menyesuaikan budaya lokal",
+          "SALAH, karena toleransi hanya berlaku di lingkungan keluarga inti saja"
+        ],
+        correctIndex: 1,
+        explanation: "Pernyataan tersebut bernilai BENAR. Sikap tasamuh (toleransi), saling menghargai perbedaan budaya, dan menjaga persatuan (ukhuwah) merupakan pilar utama rahmatan lil 'alamin dalam menciptakan kedamaian dan keharmonisan masyarakat global."
+      },
+
+      // --- BAGIAN E: KONSEP KUNCI / ISIAN SINGKAT (NOMOR 21-25) ---
+      {
+        id: 21,
+        category: "Konsep Dasar",
+        stem: "Ketika menghadapi musibah atau kesulitan hidup, usaha lahiriah yang dilakukan manusia secara sungguh-sungguh untuk memperbaiki keadaan dengan tetap memohon pertolongan Allah Swt. disebut...",
+        options: [
+          "Qana'ah",
+          "Ikhtiar",
+          "Tawadhu'",
+          "Zuhud",
+          "Istiqamah"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban nomor 21, usaha sungguh-sungguh yang dilakukan manusia untuk meraih kebaikan atau memperbaiki keadaan setelah terkena musibah disebut Ikhtiar, yang kemudian disempurnakan dengan doa dan tawakal."
+      },
+      {
+        id: 22,
+        category: "Aplikasi Akhlak",
+        stem: "Salah satu tindakan nyata untuk mewujudkan kehidupan bermakna berdasarkan keterpaduan Iman, Islam, dan Ihsan di lingkungan sekolah atau masyarakat adalah...",
+        options: [
+          "Menjaga amanah, menolong sesama dengan ikhlas, dan berakhlak baik secara konsisten",
+          "Menonjolkan amal ibadah di media sosial agar mendapatkan pengakuan publik",
+          "Membantu teman hanya ketika ada imbalan atau kepentingan pribadi tertentu",
+          "Menjalankan salat secara rutin namun tetap bersikap curang saat ujian berlangsung",
+          "Mengutamakan prestasi akademik dengan mengabaikan sopan santun kepada guru"
+        ],
+        correctIndex: 0,
+        explanation: "Sesuai kunci jawaban nomor 22, wujud nyata kehidupan bermakna berbasis Iman, Islam, dan Ihsan adalah menjaga amanah, menolong sesama dengan tulus ikhlas, serta menjaga akhlak mulia secara konsisten baik saat dilihat orang lain maupun saat sendirian."
+      },
+      {
+        id: 23,
+        category: "Konsep Dasar",
+        stem: "Seseorang yang dalam interaksi sosial sering berbicara tidak sesuai kenyataan (كذب), mengingkari janji yang telah dibuat (أخلف), atau menyalahgunakan kepercayaan yang diberikan kepadanya (خان) menunjukkan ciri perilaku...",
+        options: [
+          "Takabur",
+          "Riya'",
+          "Munafik",
+          "Hasad",
+          "Ghibah"
+        ],
+        correctIndex: 2,
+        explanation: "Sesuai kunci jawaban nomor 23, berdusta saat berbicara (kadzaba), mengingkari janji (akhlafa), dan berkhianat saat diberi amanah (khana) merupakan tiga ciri utama perilaku Munafik sebagaimana sabda Rasulullah saw."
+      },
+      {
+        id: 24,
+        category: "Hukum Waris (Faraid)",
+        stem: "Dalam ketentuan pembagian warisan tertentu antara anak laki-laki dan anak perempuan yang berbunyi:",
+        arabic: "لِلذَّكَرِ مِثْلُ حَظِّ الْأُنْثَيَيْنِ",
+        stemAfter: "Perbandingan bagian warisan anak laki-laki dibanding anak perempuan berdasarkan potongan ayat tersebut adalah...",
+        options: [
+          "1 : 1",
+          "2 : 1",
+          "3 : 1",
+          "1 : 2",
+          "3 : 2"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban nomor 24 dan QS. An-Nisa ayat 11 ('lidz-dzakari mitslu hazhzil untsayain' / bagian seorang anak laki-laki sama dengan bagian dua orang anak perempuan), rasio perbandingannya adalah 2 : 1, sejalan dengan tanggung jawab nafkah laki-laki dalam keluarga."
+      },
+      {
+        id: 25,
+        category: "Sejarah Peradaban Islam",
+        stem: "Jalur interaksi ekonomi yang sangat berperan penting dalam menyebarkan ajaran Islam secara damai, inklusif, dan berakhlak mulia di kawasan Asia (termasuk wilayah Nusantara) adalah aktivitas...",
+        options: [
+          "Ekspansi militer",
+          "Perdagangan",
+          "Isolasi pelabuhan",
+          "Monopoli pajak",
+          "Penaklukan politik"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai kunci jawaban nomor 25, aktivitas perdagangan oleh para saudagar Muslim yang jujur, amanah, dan berinteraksi damai dengan penduduk lokal menjadi saluran utama penyebaran Islam di Asia Tenggara dan Nusantara."
+      },
+
+      // --- BAGIAN F: STUDI KASUS MENDALAM / HOTS (NOMOR 26-30) ---
+      {
+        id: 26,
+        category: "Studi Kasus HOTS",
+        stem: "Sebuah keluarga mengalami penurunan pendapatan secara drastis akibat pemutusan hubungan kerja (PHK) dan kenaikan biaya kebutuhan pokok. Keterkaitan yang paling tepat antara sabar, ikhtiar, tanggung jawab, dan tawakal dalam menghadapi kondisi tersebut menurut ajaran Islam adalah...",
+        options: [
+          "Tawakal dilakukan terlebih dahulu dengan berhenti mencari nafkah, lalu bersabar menunggu bantuan datang tanpa perencanaan keuangan",
+          "Sabar menjaga ketenangan hati agar tidak putus asa; ikhtiar diwujudkan dengan mencari peluang nafkah halal dan mengatur ulang pengeluaran; tanggung jawab memastikan hak keluarga terpenuhi; dan tawakal menyandarkan hasil akhir kepada Allah Swt.",
+          "Ikhtiar dilakukan dengan segala cara tanpa memperhatikan kehalalan rezeki demi memenuhi tanggung jawab keluarga secara instan",
+          "Sabar berarti menerima penurunan pendapatan tanpa mengubah gaya hidup maupun mencari sumber penghasilan tambahan",
+          "Tanggung jawab keluarga dialihkan sepenuhnya kepada kerabat agar kepala keluarga dapat fokus beribadah di masjid"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai pedoman kunci nomor 26: Sabar menenangkan hati agar tidak berputus asa; Ikhtiar dilakukan melalui usaha mencari nafkah halal dan efisiensi pengeluaran; Tanggung jawab menjaga pemenuhan hak keluarga; dan Tawakal menyerahkan hasil akhir ikhtiar sepenuhnya kepada Allah Swt."
+      },
+      {
+        id: 27,
+        category: "Studi Kasus HOTS",
+        stem: "Jika dibandingkan antara orientasi hidup yang berpusat pada pencapaian duniawi semata dengan orientasi hidup yang berlandaskan nilai keimanan dan kebermanfaatan, maka ukuran keberhasilan hidup yang hakiki menurut pandangan Islam adalah...",
+        options: [
+          "Tingginya jabatan struktural, akumulasi kekayaan aset, dan popularitas di tengah masyarakat modern",
+          "Ketakwaan kepada Allah Swt., integritas akhlak mulia, serta kebermanfaatan nyata bagi sesama (khairunnas anfa'uhum linnas) yang menyeimbangkan dunia dan akhirat",
+          "Kemampuan menghindari seluruh aktivitas sosial agar terhindar dari kesalahan dalam bermuamalah",
+          "Keberhasilan mengumpulkan harta warisan sebanyak mungkin meskipun mengabaikan hak fakir miskin",
+          "Kebebasan hidup tanpa terikat aturan syariat selama tidak merugikan kepentingan pribadi"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai pedoman kunci nomor 27, orientasi duniawi semata bersifat fana dan rentan menimbulkan kegelisahan, sedangkan keberhasilan hakiki dalam Islam diukur melalui ketakwaan, integritas akhlak, keseimbangan dunia-akhirat, serta kemanfaatan bagi sesama manusia."
+      },
+      {
+        id: 28,
+        category: "Studi Kasus HOTS",
+        stem: "Langkah-langkah konkret dan terukur yang paling tepat dilakukan seorang pelajar untuk menghindari perilaku munafik, keras hati, dan keras kepala, sekaligus membiasakan karakter jujur, terbuka, dan rendah hati dalam pergaulan sehari-hari adalah...",
+        options: [
+          "Menghindari seluruh kegiatan organisasi agar tidak pernah membuat janji kepada teman sebaya",
+          "Membiasakan berkata apa adanya, mencatat dan menepati janji/tenggat tugas, melatih empati melalui kegiatan sosial, membiasakan musyawarah, serta terbuka menerima kritik membangun",
+          "Selalu menyetujui semua pendapat orang lain tanpa berpikir kritis agar dianggap rendah hati",
+          "Menyembunyikan kesalahan pribadi di hadapan guru demi menjaga citra sebagai siswa teladan",
+          "Mempertahankan argumen pribadi dengan suara keras saat diskusi agar dihormati anggota kelompok"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai pedoman kunci nomor 28, pencegahan sifat munafik, keras hati, dan keras kepala dilakukan secara praktis dengan membiasakan kejujuran, mencatat serta menepati tenggat janji, mengikuti kegiatan sosial untuk menumbuhkan empati, aktif bermusyawarah, dan lapang dada menerima kritik."
+      },
+      {
+        id: 29,
+        category: "Studi Kasus Faraid",
+        stem: "Dalam sebuah keluarga terjadi perbedaan pendapat saat membagi harta warisan peninggalan almarhum ayah yang meninggalkan seorang istri (الزوجة) dan dua anak laki-laki (ابنان), sementara masih ada utang almarhum yang belum diselesaikan. Urutan penyelesaian kewajiban dan pembagian harta menurut hukum faraid yang paling tepat adalah...",
+        options: [
+          "Membagi rata seluruh harta kepada istri dan dua anak laki-laki terlebih dahulu, baru kemudian melunasi utang almarhum secara patungan",
+          "Menyelesaikan biaya pengurusan jenazah, pelunasan utang almarhum, dan wasiat (maks. 1/3); lalu istri memperoleh 1/8 dan dua anak laki-laki memperoleh sisa harta (7/8) secara ashabah dibagi sama rata melalui musyawarah damai",
+          "Memberikan 1/4 harta kepada istri, melunasi utang dari bagian anak laki-laki pertama, dan menyerahkan sisanya kepada anak kedua",
+          "Menyerahkan seluruh harta warisan kepada istri selama ia masih hidup dan menunda hak waris anak hingga istri wafat",
+          "Membagi harta masing-masing 1/3 untuk istri, anak pertama, dan anak kedua tanpa memperhitungkan utang almarhum"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai pedoman kunci nomor 29: Urutan kewajiban sebelum waris adalah (1) biaya pengurusan jenazah, (2) pelunasan utang almarhum, dan (3) pelaksanaan wasiat (maksimal 1/3 harta). Selanjutnya, istri memperoleh 1/8 karena pewaris memiliki anak, dan dua anak laki-laki menerima sisa 7/8 sebagai ashabah binafsih yang dibagi sama rata secara adil dan damai."
+      },
+      {
+        id: 30,
+        category: "Studi Kasus HOTS",
+        stem: "Sebagian komunitas Muslim di era modern menghadapi tantangan ketertinggalan di bidang pendidikan, ekonomi, dan penguasaan teknologi. Evaluasi faktor penghambat beserta strategi konkret berlandaskan Al-Qur'an dan Hadis untuk membangun kembali peradaban Islam yang unggul adalah...",
+        options: [
+          "Faktor penghambatnya adalah terlalu banyaknya riset ilmiah; strateginya adalah membatasi penggunaan teknologi modern di lembaga pendidikan",
+          "Faktor penghambat berupa rendahnya budaya literasi-riset, lemahnya etos kerja, dan perpecahan internal; strateginya dengan menghidupkan semangat iqra' (riset sains-teknologi), memperkuat ukhuwah, tata kelola ekonomi syariah produktif, serta kepemimpinan amanah",
+          "Faktor penghambatnya adalah keterbukaan terhadap ilmu pengetahuan global; strateginya dengan mengisolasi ekonomi umat dari perdagangan internasional",
+          "Faktor penghambatnya adalah tingginya semangat musyawarah; strateginya dengan menyerahkan seluruh kebijakan pembangunan tanpa partisipasi masyarakat",
+          "Faktor penghambatnya adalah fokus pada pendidikan akhlak; strateginya dengan mengganti kurikulum agama sepenuhnya menjadi pelatihan industri"
+        ],
+        correctIndex: 1,
+        explanation: "Sesuai pedoman kunci nomor 30, kemunduran disebabkan rendahnya literasi dan riset, lemahnya etos kerja, serta perpecahan internal. Kebangkitan peradaban ditempuh melalui pengamalan semangat iqra' (penguasaan sains & teknologi), penguatan ukhuwah, ekonomi syariah yang produktif, dan kepemimpinan yang amanah."
+      }
+    ];
+
+    // =========================================================================
+    // 2. APPLICATION STATE & STORAGE KEYS
+    // =========================================================================
+    const STORAGE_KEY_HISTORY = "smartexam_paibp_xii_history_v1";
+    const PASSING_GRADE = 75;
+
+    let appState = {
+      currentView: "home",
+      selectedDurationMinutes: 45,
+      shuffleQuestions: true,
+      shuffleOptions: true,
+      // Active exam session state
+      examActive: false,
+      questions: [], // Prepared questions for current attempt
+      currentQuestionIndex: 0,
+      userAnswers: {}, // { questionId: { selectedOptionIdx: number|null, isChecked: boolean } }
+      totalDurationSeconds: 2700,
+      remainingSeconds: 2700,
+      timerInterval: null,
+      fiveMinuteWarningShown: false,
+      examStartTime: null,
+      latestResult: null
+    };
+
+    let resultChartInstance = null;
+    let historyChartInstance = null;
+
+    // =========================================================================
+    // 3. UTILITY FUNCTIONS
+    // =========================================================================
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function formatTimeMMSS(totalSeconds) {
+      const safeSec = Math.max(0, Math.floor(totalSeconds));
+      const mins = Math.floor(safeSec / 60);
+      const secs = safeSec % 60;
+      return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function formatDurationReadable(totalSeconds) {
+      const safeSec = Math.max(0, Math.floor(totalSeconds));
+      const mins = Math.floor(safeSec / 60);
+      const secs = safeSec % 60;
+      if (mins === 0) return `${secs} detik`;
+      if (secs === 0) return `${mins} menit`;
+      return `${mins} mnt ${secs} dtk`;
+    }
+
+    function formatDateIndonesian(isoString) {
+      try {
+        const date = new Date(isoString);
+        return date.toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } catch (e) {
+        return isoString;
+      }
+    }
+
+    function showToast(message, type = "warning") {
+      const toast = document.getElementById("toast-notification");
+      const msgEl = document.getElementById("toast-message");
+      const iconEl = document.getElementById("toast-icon");
+
+      msgEl.textContent = message;
+      if (type === "success") {
+        iconEl.setAttribute("data-lucide", "check-circle-2");
+        iconEl.className = "w-5 h-5 text-emerald-400 shrink-0";
+      } else if (type === "error") {
+        iconEl.setAttribute("data-lucide", "alert-octagon");
+        iconEl.className = "w-5 h-5 text-rose-400 shrink-0";
+      } else {
+        iconEl.setAttribute("data-lucide", "alert-triangle");
+        iconEl.className = "w-5 h-5 text-amber-400 shrink-0";
+      }
+
+      toast.classList.remove("hidden");
+      lucide.createIcons();
+
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(() => {
+        toast.classList.add("hidden");
+      }, 4500);
+    }
+
+    function getHistory() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        console.error("Failed to read history:", e);
+        return [];
+      }
+    }
+
+    function saveHistoryRecord(record) {
+      try {
+        const history = getHistory();
+        history.push(record);
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
+      } catch (e) {
+        console.error("Failed to save history:", e);
+      }
+    }
+
+    // =========================================================================
+    // 4. NAVIGATION & HOME DASHBOARD UPDATES
+    // =========================================================================
+    function navigateTo(viewName) {
+      if (appState.examActive && viewName !== "exam") {
+        // Prevent accidental navigation away during active exam
+        openFinishModal();
+        return;
+      }
+
+      appState.currentView = viewName;
+
+      // Hide all views
+      ["home", "exam", "results", "history"].forEach((v) => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add("hidden");
+      });
+
+      // Show requested view
+      const target = document.getElementById(`view-${viewName}`);
+      if (target) {
+        target.classList.remove("hidden");
+      }
+
+      // Toggle header navigation vs active exam timer controls
+      const mainNav = document.getElementById("main-nav");
+      const examControls = document.getElementById("exam-header-controls");
+
+      if (viewName === "exam") {
+        mainNav.classList.add("hidden");
+        examControls.classList.remove("hidden");
+        examControls.classList.add("flex");
+      } else {
+        mainNav.classList.remove("hidden");
+        examControls.classList.add("hidden");
+        examControls.classList.remove("flex");
+        document.getElementById("time-warning-banner").classList.add("hidden");
+      }
+
+      // Update active nav tab styling
+      const navHome = document.getElementById("nav-home");
+      const navHistory = document.getElementById("nav-history");
+      if (viewName === "home") {
+        navHome.className = "px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 bg-blue-50 text-blue-700";
+        navHistory.className = "px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-slate-600 hover:bg-slate-100";
+        refreshHomeDashboardStats();
+      } else if (viewName === "history") {
+        navHistory.className = "px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 bg-blue-50 text-blue-700";
+        navHome.className = "px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 text-slate-600 hover:bg-slate-100";
+        renderHistoryDashboard();
+      }
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      lucide.createIcons();
+    }
+
+    function refreshHomeDashboardStats() {
+      const history = getHistory();
+      const badge = document.getElementById("nav-history-badge");
+      const bestEl = document.getElementById("home-best-score");
+      const countEl = document.getElementById("home-attempt-count");
+      const avgEl = document.getElementById("home-avg-score");
+
+      if (history.length > 0) {
+        badge.textContent = history.length;
+        badge.classList.remove("hidden");
+
+        const scores = history.map((h) => h.score);
+        const best = Math.max(...scores);
+        const avg = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+
+        bestEl.textContent = best;
+        countEl.textContent = `${history.length} Percobaan`;
+        avgEl.textContent = avg;
+      } else {
+        badge.classList.add("hidden");
+        bestEl.textContent = "-";
+        countEl.textContent = "0 Percobaan";
+        avgEl.textContent = "-";
+      }
+    }
+
+    function selectDurationPreset(minutes) {
+      appState.selectedDurationMinutes = minutes;
+      document.getElementById("custom-duration-input").value = minutes;
+
+      document.querySelectorAll(".duration-btn").forEach((btn) => {
+        const val = parseInt(btn.getAttribute("data-duration"), 10);
+        if (val === minutes) {
+          btn.className = "duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-blue-600 border-blue-600 text-white shadow-sm";
+        } else {
+          btn.className = "duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-white border-slate-200 text-slate-700 hover:border-blue-400";
+        }
+      });
+    }
+
+    function handleCustomDuration(value) {
+      let mins = parseInt(value, 10);
+      if (isNaN(mins) || mins < 1) mins = 1;
+      if (mins > 180) mins = 180;
+      appState.selectedDurationMinutes = mins;
+      document.getElementById("custom-duration-input").value = mins;
+
+      document.querySelectorAll(".duration-btn").forEach((btn) => {
+        const val = parseInt(btn.getAttribute("data-duration"), 10);
+        if (val === mins) {
+          btn.className = "duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-blue-600 border-blue-600 text-white shadow-sm";
+        } else {
+          btn.className = "duration-btn py-2 px-3 rounded-xl text-sm font-semibold border transition-all bg-white border-slate-200 text-slate-700 hover:border-blue-400";
+        }
+      });
+    }
+
+    // =========================================================================
+    // 5. EXAM ENGINE: START, TIMER, RENDER QUESTION, CHECK ANSWER, NAVIGATION
+    // =========================================================================
+    function prepareExamQuestions() {
+      const doShuffleQ = document.getElementById("toggle-shuffle-questions").checked;
+      const doShuffleOpt = document.getElementById("toggle-shuffle-options").checked;
+
+      appState.shuffleQuestions = doShuffleQ;
+      appState.shuffleOptions = doShuffleOpt;
+
+      let pool = QUESTION_BANK.map((q) => {
+        // Build option objects with original index tracking
+        let optObjs = q.options.map((text, idx) => ({
+          text,
+          isCorrect: idx === q.correctIndex
+        }));
+
+        if (doShuffleOpt) {
+          optObjs = shuffleArray(optObjs);
+        }
+
+        const newCorrectIdx = optObjs.findIndex((o) => o.isCorrect);
+
+        return {
+          ...q,
+          preparedOptions: optObjs.map((o) => o.text),
+          preparedCorrectIndex: newCorrectIdx
+        };
+      });
+
+      if (doShuffleQ) {
+        pool = shuffleArray(pool);
+      }
+
+      return pool;
+    }
+
+    function startExam() {
+      // Read duration
+      const inputMins = parseInt(document.getElementById("custom-duration-input").value, 10);
+      const durationMins = !isNaN(inputMins) && inputMins >= 1 ? Math.min(180, inputMins) : 45;
+      appState.selectedDurationMinutes = durationMins;
+
+      // Reset exam state
+      appState.questions = prepareExamQuestions();
+      appState.currentQuestionIndex = 0;
+      appState.userAnswers = {};
+      appState.questions.forEach((q) => {
+        appState.userAnswers[q.id] = {
+          selectedOptionIdx: null,
+          isChecked: false
+        };
+      });
+
+      appState.totalDurationSeconds = durationMins * 60;
+      appState.remainingSeconds = durationMins * 60;
+      appState.fiveMinuteWarningShown = false;
+      appState.examActive = true;
+      appState.examStartTime = Date.now();
+
+      // Reset timer visual style
+      const timerBox = document.getElementById("timer-box");
+      timerBox.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-mono font-bold text-base sm:text-lg transition-colors";
+      document.getElementById("time-warning-banner").classList.add("hidden");
+
+      // Navigate to exam view and start countdown
+      navigateTo("exam");
+      startTimer();
+      renderQuestionNavigator();
+      renderCurrentQuestion();
+    }
+
+    function retryExam() {
+      startExam();
+    }
+
+    function startTimer() {
+      if (appState.timerInterval) {
+        clearInterval(appState.timerInterval);
+      }
+
+      updateTimerDisplay();
+
+      appState.timerInterval = setInterval(() => {
+        if (!appState.examActive) {
+          clearInterval(appState.timerInterval);
+          return;
+        }
+
+        appState.remainingSeconds -= 1;
+        updateTimerDisplay();
+
+        // 5-Minute Warning (300 seconds)
+        if (appState.remainingSeconds <= 300 && appState.remainingSeconds > 0 && !appState.fiveMinuteWarningShown) {
+          appState.fiveMinuteWarningShown = true;
+          const timerBox = document.getElementById("timer-box");
+          timerBox.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 font-mono font-bold text-base sm:text-lg transition-colors timer-urgent";
+          document.getElementById("time-warning-banner").classList.remove("hidden");
+          showToast("Peringatan: Waktu ujian tersisa 5 menit lagi!", "warning");
+        }
+
+        // Auto-submit when time runs out
+        if (appState.remainingSeconds <= 0) {
+          clearInterval(appState.timerInterval);
+          appState.remainingSeconds = 0;
+          updateTimerDisplay();
+          showToast("Waktu habis! Jawaban Anda otomatis dikumpulkan dan dikoreksi.", "error");
+          finishExam(true);
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const display = document.getElementById("timer-display");
+      if (display) {
+        display.textContent = formatTimeMMSS(appState.remainingSeconds);
+      }
+    }
+
+    function renderCurrentQuestion() {
+      const idx = appState.currentQuestionIndex;
+      const total = appState.questions.length;
+      const question = appState.questions[idx];
+      const answerState = appState.userAnswers[question.id];
+
+      // Header badges
+      document.getElementById("q-number-badge").textContent = `Soal ${idx + 1} dari ${total}`;
+      document.getElementById("q-category-badge").textContent = question.category;
+      document.getElementById("mobile-progress-text").textContent = `${idx + 1} / ${total}`;
+
+      // Status pill
+      const statusPill = document.getElementById("q-status-pill");
+      if (answerState.isChecked) {
+        const isRight = answerState.selectedOptionIdx === question.preparedCorrectIndex;
+        if (isRight) {
+          statusPill.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
+          statusPill.innerHTML = `<i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i><span>Terjawab Benar</span>`;
+        } else {
+          statusPill.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800";
+          statusPill.innerHTML = `<i data-lucide="x-circle" class="w-3.5 h-3.5"></i><span>Terjawab Salah</span>`;
+        }
+      } else if (answerState.selectedOptionIdx !== null) {
+        statusPill.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800";
+        statusPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-600"></span><span>Opsi Dipilih</span>`;
+      } else {
+        statusPill.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-200/70 text-slate-600";
+        statusPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span><span>Belum Dijawab</span>`;
+      }
+
+      // Render Question Stem (including Arabic block if present)
+      const stemContainer = document.getElementById("q-stem-container");
+      let stemHTML = `<p>${question.stem}</p>`;
+      if (question.arabic) {
+        stemHTML += `
+          <div class="my-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/90 text-right">
+            <p class="arabic-text text-xl sm:text-2xl text-slate-900 font-bold">${question.arabic}</p>
+          </div>
+        `;
+      }
+      if (question.stemAfter) {
+        stemHTML += `<p>${question.stemAfter}</p>`;
+      }
+      stemContainer.innerHTML = stemHTML;
+
+      // Render 5 Options (A, B, C, D, E)
+      const optionLetters = ["A", "B", "C", "D", "E"];
+      const optionsContainer = document.getElementById("q-options-container");
+      optionsContainer.innerHTML = "";
+
+      question.preparedOptions.forEach((optText, optIdx) => {
+        const letter = optionLetters[optIdx];
+        const isSelected = answerState.selectedOptionIdx === optIdx;
+        const isCorrectOption = optIdx === question.preparedCorrectIndex;
+
+        let cardClass = "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-3.5 group ";
+        let badgeClass = "w-8 h-8 rounded-xl font-display font-bold text-sm flex items-center justify-center shrink-0 transition-colors ";
+        let rightIconHTML = "";
+
+        if (answerState.isChecked) {
+          cardClass += "cursor-default ";
+          if (isCorrectOption) {
+            cardClass += "bg-emerald-50/90 border-emerald-500 text-emerald-950 shadow-sm";
+            badgeClass += "bg-emerald-600 text-white";
+            rightIconHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0 mt-1"></i>`;
+          } else if (isSelected && !isCorrectOption) {
+            cardClass += "bg-rose-50/90 border-rose-500 text-rose-950";
+            badgeClass += "bg-rose-600 text-white";
+            rightIconHTML = `<i data-lucide="x-circle" class="w-5 h-5 text-rose-600 shrink-0 mt-1"></i>`;
+          } else {
+            cardClass += "bg-white border-slate-200/80 text-slate-500 opacity-75";
+            badgeClass += "bg-slate-100 text-slate-500";
+          }
+        } else {
+          cardClass += "cursor-pointer ";
+          if (isSelected) {
+            cardClass += "bg-blue-50/80 border-blue-600 text-blue-950 shadow-sm";
+            badgeClass += "bg-blue-600 text-white";
+          } else {
+            cardClass += "bg-white border-slate-200 hover:border-blue-400 hover:bg-slate-50/80 text-slate-700";
+            badgeClass += "bg-slate-100 text-slate-700 group-hover:bg-blue-100 group-hover:text-blue-700";
+          }
+        }
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = cardClass;
+        if (!answerState.isChecked) {
+          btn.onclick = () => selectOption(optIdx);
+        }
+
+        btn.innerHTML = `
+          <span class="${badgeClass}">${letter}</span>
+          <span class="flex-1 text-sm sm:text-[15px] leading-relaxed pt-1 font-medium">${optText}</span>
+          ${rightIconHTML}
+        `;
+        optionsContainer.appendChild(btn);
+      });
+
+      // Check Answer Bar & Automatic Explanation Panel
+      const checkBar = document.getElementById("check-answer-bar");
+      const btnCheck = document.getElementById("btn-check-answer");
+      const expPanel = document.getElementById("explanation-panel");
+
+      if (answerState.isChecked) {
+        checkBar.classList.add("hidden");
+        expPanel.classList.remove("hidden");
+
+        const isUserCorrect = answerState.selectedOptionIdx === question.preparedCorrectIndex;
+        const correctLetter = optionLetters[question.preparedCorrectIndex];
+        const statusBadge = document.getElementById("explanation-status-badge");
+        const keyBadge = document.getElementById("explanation-key-badge");
+
+        if (isUserCorrect) {
+          expPanel.className = "fade-in rounded-2xl border border-emerald-300 bg-emerald-50/80 p-5 space-y-3";
+          statusBadge.className = "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-display font-bold text-sm bg-emerald-600 text-white";
+          statusBadge.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Jawaban Anda Benar!</span>`;
+          keyBadge.className = "text-xs sm:text-sm font-bold px-3 py-1 rounded-lg bg-white text-emerald-700 border border-emerald-200";
+          keyBadge.textContent = `Kunci Jawaban: ${correctLetter}`;
+        } else {
+          expPanel.className = "fade-in rounded-2xl border border-rose-300 bg-rose-50/80 p-5 space-y-3";
+          statusBadge.className = "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-display font-bold text-sm bg-rose-600 text-white";
+          statusBadge.innerHTML = `<i data-lucide="x-circle" class="w-4 h-4"></i><span>Jawaban Anda Kurang Tepat</span>`;
+          keyBadge.className = "text-xs sm:text-sm font-bold px-3 py-1 rounded-lg bg-white text-emerald-700 border border-emerald-200";
+          keyBadge.textContent = `Jawaban yang Benar: ${correctLetter}`;
+        }
+
+        document.getElementById("explanation-text").textContent = question.explanation;
+
+        const nextAfterLabel = document.getElementById("btn-next-after-check-label");
+        nextAfterLabel.textContent = idx === total - 1 ? "Lihat Hasil Ujian" : "Soal Berikutnya";
+      } else {
+        checkBar.classList.remove("hidden");
+        expPanel.classList.add("hidden");
+        btnCheck.disabled = answerState.selectedOptionIdx === null;
+      }
+
+      // Prev & Next navigation buttons
+      document.getElementById("btn-prev-question").disabled = idx === 0;
+      document.getElementById("btn-next-question").disabled = idx === total - 1;
+
+      // Update navigator highlights
+      renderQuestionNavigator();
+      lucide.createIcons();
+    }
+
+    function selectOption(optIdx) {
+      const question = appState.questions[appState.currentQuestionIndex];
+      const answerState = appState.userAnswers[question.id];
+      if (answerState.isChecked) return;
+
+      answerState.selectedOptionIdx = optIdx;
+      renderCurrentQuestion();
+    }
+
+    function submitCurrentAnswer() {
+      const question = appState.questions[appState.currentQuestionIndex];
+      const answerState = appState.userAnswers[question.id];
+      if (answerState.selectedOptionIdx === null || answerState.isChecked) return;
+
+      answerState.isChecked = true;
+      renderCurrentQuestion();
+    }
+
+    function handleNextAfterCheck() {
+      if (appState.currentQuestionIndex < appState.questions.length - 1) {
+        appState.currentQuestionIndex += 1;
+        renderCurrentQuestion();
+      } else {
+        openFinishModal();
+      }
+    }
+
+    function prevQuestion() {
+      if (appState.currentQuestionIndex > 0) {
+        appState.currentQuestionIndex -= 1;
+        renderCurrentQuestion();
+      }
+    }
+
+    function nextQuestion() {
+      if (appState.currentQuestionIndex < appState.questions.length - 1) {
+        appState.currentQuestionIndex += 1;
+        renderCurrentQuestion();
+      }
+    }
+
+    function jumpToQuestion(index) {
+      if (index >= 0 && index < appState.questions.length) {
+        appState.currentQuestionIndex = index;
+        renderCurrentQuestion();
+      }
+    }
+
+    function renderQuestionNavigator() {
+      const grid = document.getElementById("question-nav-grid");
+      grid.innerHTML = "";
+
+      let answeredCount = 0;
+
+      appState.questions.forEach((q, idx) => {
+        const ans = appState.userAnswers[q.id];
+        const isCurrent = idx === appState.currentQuestionIndex;
+        const hasAnswered = ans.selectedOptionIdx !== null;
+        if (hasAnswered) answeredCount++;
+
+        let btnClass = "h-10 rounded-xl font-display font-bold text-xs sm:text-sm transition-all flex items-center justify-center ";
+
+        if (ans.isChecked) {
+          const isCorrect = ans.selectedOptionIdx === q.preparedCorrectIndex;
+          btnClass += isCorrect
+            ? "bg-emerald-500 text-white shadow-sm "
+            : "bg-rose-500 text-white shadow-sm ";
+        } else if (hasAnswered) {
+          btnClass += "bg-blue-600 text-white shadow-sm ";
+        } else {
+          btnClass += "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 ";
+        }
+
+        if (isCurrent) {
+          btnClass += "ring-2 ring-offset-2 ring-purple-600 scale-105 ";
+        }
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = btnClass;
+        btn.textContent = idx + 1;
+        btn.onclick = () => jumpToQuestion(idx);
+        grid.appendChild(btn);
+      });
+
+      const total = appState.questions.length;
+      document.getElementById("sidebar-answered-counter").textContent = `${answeredCount} / ${total} Terjawab`;
+      const pct = Math.round((answeredCount / total) * 100);
+      document.getElementById("sidebar-progress-bar").style.width = `${pct}%`;
+    }
+
+    // =========================================================================
+    // 6. FINISH MODAL & AUTOMATIC SCORING ENGINE
+    // =========================================================================
+    function openFinishModal() {
+      let answered = 0;
+      appState.questions.forEach((q) => {
+        if (appState.userAnswers[q.id].selectedOptionIdx !== null) {
+          answered++;
+        }
+      });
+      const unanswered = appState.questions.length - answered;
+
+      document.getElementById("modal-answered-count").textContent = answered;
+      document.getElementById("modal-unanswered-count").textContent = unanswered;
+
+      const warnBox = document.getElementById("modal-unanswered-warning");
+      if (unanswered > 0) {
+        warnBox.classList.remove("hidden");
+      } else {
+        warnBox.classList.add("hidden");
+      }
+
+      document.getElementById("modal-finish").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeFinishModal() {
+      document.getElementById("modal-finish").classList.add("hidden");
+    }
+
+    function finishExam(isAutoTimeout = false) {
+      closeFinishModal();
+      if (appState.timerInterval) {
+        clearInterval(appState.timerInterval);
+      }
+      appState.examActive = false;
+
+      const totalQuestions = appState.questions.length;
+      let correctCount = 0;
+      let wrongCount = 0;
+      let unansweredCount = 0;
+
+      const detailedItems = appState.questions.map((q, idx) => {
+        const ans = appState.userAnswers[q.id];
+        const selectedIdx = ans.selectedOptionIdx;
+        let status = "unanswered";
+
+        if (selectedIdx === null) {
+          unansweredCount++;
+          status = "unanswered";
+        } else if (selectedIdx === q.preparedCorrectIndex) {
+          correctCount++;
+          status = "correct";
+        } else {
+          wrongCount++;
+          status = "wrong";
+        }
+
+        return {
+          number: idx + 1,
+          id: q.id,
+          category: q.category,
+          stem: q.stem,
+          arabic: q.arabic || null,
+          stemAfter: q.stemAfter || null,
+          options: q.preparedOptions,
+          correctIndex: q.preparedCorrectIndex,
+          selectedIndex: selectedIdx,
+          explanation: q.explanation,
+          status
+        };
+      });
+
+      // Formula: Nilai = (Jumlah jawaban benar / Total soal) × 100
+      const rawScore = (correctCount / totalQuestions) * 100;
+      const finalScore = Math.round(rawScore * 10) / 10; // Clean up to 1 decimal if needed
+      const passed = finalScore >= PASSING_GRADE;
+
+      const timeUsedSeconds = Math.max(1, appState.totalDurationSeconds - appState.remainingSeconds);
+      const completedAt = new Date().toISOString();
+
+      const attemptResult = {
+        id: Date.now(),
+        completedAt,
+        totalQuestions,
+        correctCount,
+        wrongCount,
+        unansweredCount,
+        score: finalScore,
+        passed,
+        timeUsedSeconds,
+        isAutoTimeout,
+        detailedItems
+      };
+
+      appState.latestResult = attemptResult;
+      saveHistoryRecord(attemptResult);
+
+      navigateTo("results");
+      renderResultsPage(attemptResult);
+    }
+
+    // =========================================================================
+    // 7. RESULTS PAGE & CHART VISUALIZATION
+    // =========================================================================
+    function renderResultsPage(result) {
+      document.getElementById("result-final-score").textContent = result.score;
+      document.getElementById("result-timestamp").textContent = `Selesai pada: ${formatDateIndonesian(result.completedAt)}`;
+
+      const statusBadge = document.getElementById("result-status-badge");
+      const bannerBg = document.getElementById("result-banner-bg");
+      const feedbackMsg = document.getElementById("result-feedback-message");
+
+      if (result.passed) {
+        bannerBg.className = "p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 text-white";
+        statusBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-emerald-400 text-slate-950 shadow-sm";
+        statusBadge.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i><span>LULUS (KKM ≥ 75)</span>`;
+        feedbackMsg.textContent = "Selamat! Anda telah melampaui batas ketuntasan minimal (KKM 75). Pertahankan pemahaman materi PAIBP Anda.";
+      } else {
+        bannerBg.className = "p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-slate-800 via-blue-900 to-purple-900 text-white";
+        statusBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-rose-500 text-white shadow-sm";
+        statusBadge.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4"></i><span>BELUM LULUS (KKM 75)</span>`;
+        feedbackMsg.textContent = "Nilai Anda belum mencapai KKM 75. Silakan pelajari kembali pembahasan di bawah dan klik 'Coba Lagi' untuk meningkatkan nilai.";
+      }
+
+      document.getElementById("res-correct-count").textContent = result.correctCount;
+      document.getElementById("res-wrong-count").textContent = result.wrongCount;
+      document.getElementById("res-unanswered-count").textContent = result.unansweredCount;
+      document.getElementById("res-percentage").textContent = `${result.score}%`;
+      document.getElementById("res-time-used").textContent = formatDurationReadable(result.timeUsedSeconds);
+
+      // Update aggregate stats
+      const history = getHistory();
+      const scores = history.map((h) => h.score);
+      const best = scores.length ? Math.max(...scores) : result.score;
+      const avg = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : result.score;
+
+      document.getElementById("res-total-attempts").textContent = `${history.length} Kali`;
+      document.getElementById("res-best-score").textContent = best;
+      document.getElementById("res-avg-score").textContent = avg;
+
+      // Render Chart.js Doughnut Chart
+      const ctx = document.getElementById("resultChart").getContext("2d");
+      if (resultChartInstance) {
+        resultChartInstance.destroy();
+      }
+      resultChartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Jawaban Benar", "Jawaban Salah", "Belum Dijawab"],
+          datasets: [
+            {
+              data: [result.correctCount, result.wrongCount, result.unansweredCount],
+              backgroundColor: ["#10b981", "#f43f5e", "#cbd5e1"],
+              borderWidth: 2,
+              borderColor: "#ffffff",
+              hoverOffset: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "66%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                usePointStyle: true,
+                padding: 16,
+                font: { family: "Inter", size: 12, weight: "600" }
+              }
+            }
+          }
+        }
+      });
+
+      // Render Question Review List
+      filterReview("all");
+      lucide.createIcons();
+    }
+
+    function filterReview(filterType) {
+      document.querySelectorAll(".review-filter-btn").forEach((btn) => {
+        if (btn.getAttribute("data-filter") === filterType) {
+          btn.className = "review-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white";
+        } else {
+          btn.className = "review-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200";
+        }
+      });
+
+      const listContainer = document.getElementById("results-review-list");
+      listContainer.innerHTML = "";
+
+      if (!appState.latestResult) return;
+
+      const letters = ["A", "B", "C", "D", "E"];
+      const items = appState.latestResult.detailedItems.filter((item) => {
+        if (filterType === "correct") return item.status === "correct";
+        if (filterType === "wrong") return item.status !== "correct";
+        return true;
+      });
+
+      if (items.length === 0) {
+        listContainer.innerHTML = `<p class="text-sm text-slate-500 text-center py-6">Tidak ada soal pada kategori filter ini.</p>`;
+        return;
+      }
+
+      items.forEach((item) => {
+        let borderClass = "border-slate-200 bg-slate-50/40";
+        let badgeHTML = `<span class="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-bold">Tidak Dijawab</span>`;
+
+        if (item.status === "correct") {
+          borderClass = "border-emerald-200 bg-emerald-50/30";
+          badgeHTML = `<span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold">Benar</span>`;
+        } else if (item.status === "wrong") {
+          borderClass = "border-rose-200 bg-rose-50/30";
+          badgeHTML = `<span class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 text-xs font-bold">Salah</span>`;
+        }
+
+        const userChoiceText =
+          item.selectedIndex !== null
+            ? `${letters[item.selectedIndex]}. ${item.options[item.selectedIndex]}`
+            : "Tidak memilih jawaban";
+        const correctChoiceText = `${letters[item.correctIndex]}. ${item.options[item.correctIndex]}`;
+
+        const card = document.createElement("div");
+        card.className = `p-5 rounded-2xl border ${borderClass} space-y-3`;
+        card.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-display font-bold text-xs">No. ${item.number}</span>
+              <span class="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">${item.category}</span>
+            </div>
+            ${badgeHTML}
+          </div>
+          <p class="text-sm font-medium text-slate-800 leading-relaxed">${item.stem}</p>
+          ${item.arabic ? `<p class="arabic-text text-xl text-slate-900 font-bold bg-white p-3 rounded-xl border border-slate-200">${item.arabic}</p>` : ""}
+          ${item.stemAfter ? `<p class="text-sm font-medium text-slate-800">${item.stemAfter}</p>` : ""}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs sm:text-sm pt-1">
+            <div class="p-3 rounded-xl bg-white border ${item.status === "correct" ? "border-emerald-300" : "border-rose-200"}">
+              <span class="block text-[11px] font-bold uppercase text-slate-400">Jawaban Anda</span>
+              <span class="font-semibold ${item.status === "correct" ? "text-emerald-700" : "text-rose-700"}">${userChoiceText}</span>
+            </div>
+            <div class="p-3 rounded-xl bg-white border border-emerald-300">
+              <span class="block text-[11px] font-bold uppercase text-emerald-600">Kunci Jawaban Benar</span>
+              <span class="font-semibold text-emerald-800">${correctChoiceText}</span>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 text-xs sm:text-sm text-slate-700">
+            <strong class="text-blue-900">Pembahasan:</strong> ${item.explanation}
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+
+    // =========================================================================
+    // 8. HISTORY DASHBOARD & ANALYTICS CHART
+    // =========================================================================
+    function renderHistoryDashboard() {
+      const history = getHistory();
+      const emptyState = document.getElementById("history-empty-state");
+      const tableWrapper = document.getElementById("history-table-wrapper");
+      const chartEmpty = document.getElementById("history-chart-empty");
+      const clearBtn = document.getElementById("btn-clear-history");
+
+      if (history.length === 0) {
+        document.getElementById("hist-total-attempts").textContent = "0";
+        document.getElementById("hist-best-score").textContent = "-";
+        document.getElementById("hist-avg-score").textContent = "-";
+        document.getElementById("hist-pass-rate").textContent = "0%";
+
+        emptyState.classList.remove("hidden");
+        tableWrapper.classList.add("hidden");
+        chartEmpty.classList.remove("hidden");
+        clearBtn.classList.add("hidden");
+
+        if (historyChartInstance) {
+          historyChartInstance.destroy();
+          historyChartInstance = null;
+        }
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+      tableWrapper.classList.remove("hidden");
+      chartEmpty.classList.add("hidden");
+      clearBtn.classList.remove("hidden");
+
+      const scores = history.map((h) => h.score);
+      const best = Math.max(...scores);
+      const avg = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+      const passCount = history.filter((h) => h.passed).length;
+      const passRate = Math.round((passCount / history.length) * 100);
+
+      document.getElementById("hist-total-attempts").textContent = history.length;
+      document.getElementById("hist-best-score").textContent = best;
+      document.getElementById("hist-avg-score").textContent = avg;
+      document.getElementById("hist-pass-rate").textContent = `${passRate}%`;
+
+      // Populate Table (newest first)
+      const tbody = document.getElementById("history-table-body");
+      tbody.innerHTML = "";
+
+      [...history].reverse().forEach((item, revIdx) => {
+        const attemptNum = history.length - revIdx;
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50/90 transition-colors";
+        tr.innerHTML = `
+          <td class="py-3.5 px-5 font-display font-bold text-slate-900">Percobaan #${attemptNum}</td>
+          <td class="py-3.5 px-5 text-slate-600">${formatDateIndonesian(item.completedAt)}</td>
+          <td class="py-3.5 px-5">
+            <span class="text-emerald-600 font-semibold">${item.correctCount} Benar</span> •
+            <span class="text-rose-600 font-semibold">${item.wrongCount} Salah</span> •
+            <span class="text-slate-500">${item.unansweredCount} Kosong</span>
+          </td>
+          <td class="py-3.5 px-5 text-slate-600 font-medium">${formatDurationReadable(item.timeUsedSeconds)}</td>
+          <td class="py-3.5 px-5 font-display font-extrabold text-base text-blue-700">${item.score}</td>
+          <td class="py-3.5 px-5">
+            ${
+              item.passed
+                ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Lulus</span>`
+                : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">Tidak Lulus</span>`
+            }
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Render Line Chart
+      const ctx = document.getElementById("historyChart").getContext("2d");
+      if (historyChartInstance) {
+        historyChartInstance.destroy();
+      }
+
+      const labels = history.map((_, i) => `Percobaan #${i + 1}`);
+      const kkmLine = history.map(() => PASSING_GRADE);
+
+      historyChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Nilai Ujian",
+              data: scores,
+              borderColor: "#2563eb",
+              backgroundColor: "rgba(37, 99, 235, 0.12)",
+              borderWidth: 3,
+              pointBackgroundColor: "#7c3aed",
+              pointBorderColor: "#ffffff",
+              pointBorderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: "Batas KKM (75)",
+              data: kkmLine,
+              borderColor: "#10b981",
+              borderWidth: 2,
+              borderDash: [6, 6],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 20,
+                font: { family: "Inter", size: 11 }
+              },
+              grid: { color: "#f1f5f9" }
+            },
+            x: {
+              ticks: {
+                font: { family: "Inter", size: 11 }
+              },
+              grid: { display: false }
+            }
+          },
+          plugins: {
+            legend: {
+              position: "top",
+              labels: {
+                usePointStyle: true,
+                font: { family: "Inter", size: 12, weight: "600" }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function openClearHistoryModal() {
+      document.getElementById("modal-clear-history").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeClearHistoryModal() {
+      document.getElementById("modal-clear-history").classList.add("hidden");
+    }
+
+    function confirmClearHistory() {
+      localStorage.removeItem(STORAGE_KEY_HISTORY);
+      closeClearHistoryModal();
+      refreshHomeDashboardStats();
+      renderHistoryDashboard();
+      showToast("Seluruh riwayat percobaan ujian berhasil dihapus.", "success");
+    }
+
+    // =========================================================================
+    // 9. INITIALIZATION ON PAGE LOAD
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      refreshHomeDashboardStats();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
